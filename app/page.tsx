@@ -1,3 +1,5 @@
+"use client";
+
 export default function Home() {
   const handleClick = () => {
     alert("Bouton cliqué !");
@@ -13,4 +15,4 @@ export default function Home() {
       </button>
     </main>
   );
-} 
+}
