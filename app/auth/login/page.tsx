@@ -1,10 +1,14 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { login } from "./actions";
 
-export default async function Page({
+async function LoginPageContent({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  await connection();
+
   const { error } = await searchParams;
 
   return (
@@ -53,5 +57,17 @@ export default async function Page({
         </form>
       </div>
     </div>
+  );
+}
+
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  return (
+    <Suspense fallback={<div className="p-6">Chargement...</div>}>
+      <LoginPageContent searchParams={searchParams} />
+    </Suspense>
   );
 }
