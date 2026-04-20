@@ -1,8 +1,9 @@
+import { connection } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export const dynamic = 'force-dynamic'
-
 export default async function Page() {
+  await connection()
+
   const supabase = await createClient()
 
   const {
