@@ -1,68 +1,56 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export type TransitionState = {
-  ok: boolean;
-  message: string;
-  old_status?: string | null;
-  new_status?: string | null;
-  transition_ok?: boolean;
-  transition_message?: string | null;
+  transition_ok: boolean;
+  old_status: string | null;
+  new_status: string | null;
+  error?: string;
 };
 
 export async function runWorkflowTransition(
-  _prevState: TransitionState,
+  prevState: TransitionState,
   formData: FormData
 ): Promise<TransitionState> {
-  const reportIdRaw = formData.get("reportId");
-  const targetStatusRaw = formData.get("targetStatus");
-  const commentRaw = formData.get("comment");
+  try {
+    const supabase = await createClient();
 
-  const reportId = Number(reportIdRaw);
-  const targetStatus = String(targetStatusRaw ?? "").trim();
-  const comment = String(commentRaw ?? "").trim();
+    const reportId = Number(formData.get("report_id"));
+    const targetStatus = String(formData.get("target_status"));
+    const comment = formData.get("comment")?.toString() || null;
 
-  if (!Number.isInteger(reportId) || reportId <= 0) {
+    const { data, error } = await supabase.rpc(
+      "app_transition_report_status",
+      {
+        p_rapport_id: reportId,
+        p_to_status: targetStatus,
+        p_commentaire: comment,
+      }
+    );
+
+    if (error) {
+      return {
+        transition_ok: false,
+        old_status: null,
+        new_status: null,
+        error: `Erreur RPC : ${error.message}`,
+      };
+    }
+
+    const result = data?.[0];
+
     return {
-      ok: false,
-      message: "ID de rapport invalide.",
+      transition_ok: result?.transition_ok ?? false,
+      old_status: result?.old_status ?? null,
+      new_status: result?.new_status ?? null,
+    };
+  } catch (e: any) {
+    return {
+      transition_ok: false,
+      old_status: null,
+      new_status: null,
+      error: e.message,
     };
   }
-
-  if (!targetStatus) {
-    return {
-      ok: false,
-      message: "Statut cible obligatoire.",
-    };
-  }
-
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("app_transition_report_status", {
-    p_report_id: reportId,
-    p_target_status: targetStatus,
-    p_commentaire: comment || null,
-  });
-
-  if (error) {
-    return {
-      ok: false,
-      message: `Erreur RPC : ${error.message}`,
-    };
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-
-  revalidatePath(`/dev/reports/${reportId}/workflow`);
-
-  return {
-    ok: Boolean(row?.transition_ok),
-    message: row?.transition_message ?? "Réponse reçue.",
-    old_status: row?.old_status ?? null,
-    new_status: row?.new_status ?? null,
-    transition_ok: row?.transition_ok ?? false,
-    transition_message: row?.transition_message ?? null,
-  };
 }
