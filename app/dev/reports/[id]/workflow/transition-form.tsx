@@ -1,9 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
-import { runWorkflowTransition, type TransitionState } from "./actions";
+import {
+  runWorkflowTransition,
+  type WorkflowTransitionState,
+} from "./actions";
 
-const initialTransitionState: TransitionState = {
+const initialTransitionState: WorkflowTransitionState = {
   ok: false,
   message: "",
   old_status: null,
@@ -43,7 +46,9 @@ export default function TransitionForm({
             <option value="saisi_chauffeur">saisi_chauffeur</option>
             <option value="en_controle_admin">en_controle_admin</option>
             <option value="valide_admin">valide_admin</option>
-            <option value="en_attente_prefacturation">en_attente_prefacturation</option>
+            <option value="en_attente_prefacturation">
+              en_attente_prefacturation
+            </option>
             <option value="prefacture">prefacture</option>
             <option value="valide_super_admin">valide_super_admin</option>
             <option value="verrouille">verrouille</option>
@@ -77,16 +82,13 @@ export default function TransitionForm({
           {state.message || "Aucune transition lancée pour le moment."}
         </p>
         <p>
-          <strong>transition_ok :</strong>{" "}
-          {String(state.transition_ok ?? false)}
+          <strong>transition_ok :</strong> {String(state.transition_ok ?? false)}
         </p>
         <p>
-          <strong>old_status :</strong>{" "}
-          {state.old_status ?? "null"}
+          <strong>old_status :</strong> {state.old_status ?? "null"}
         </p>
         <p>
-          <strong>new_status :</strong>{" "}
-          {state.new_status ?? "null"}
+          <strong>new_status :</strong> {state.new_status ?? "null"}
         </p>
       </div>
     </section>
