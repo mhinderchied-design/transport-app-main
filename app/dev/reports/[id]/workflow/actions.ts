@@ -40,7 +40,7 @@ export async function runWorkflowTransition(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("app_transition_report_status", {
+  const { data, error } = await supabase.rpc("app_transition_report_status_rpc", {
     p_rapport_id: reportId,
     p_to_status: targetStatus,
     p_commentaire: comment || null,
