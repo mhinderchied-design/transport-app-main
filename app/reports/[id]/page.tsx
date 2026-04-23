@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
@@ -59,7 +61,9 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-export default async function ReportPage({ params }: PageProps) {
+async function ReportPageContent({ params }: PageProps) {
+  await connection();
+
   const { id } = await params;
   const reportId = Number(id);
 
@@ -217,5 +221,13 @@ export default async function ReportPage({ params }: PageProps) {
         </p>
       </section>
     </main>
+  );
+}
+
+export default function ReportPage(props: PageProps) {
+  return (
+    <Suspense fallback={<div className="p-6 text-white">Chargement du rapport…</div>}>
+      <ReportPageContent {...props} />
+    </Suspense>
   );
 }
