@@ -7,6 +7,7 @@ type Props = {
   reportId: number;
   currentStatus: string | null;
   isLocked: boolean;
+  currentRole: string | null;
   allowedTransitions: string[];
   initialState: ReportTransitionState;
   action: (
@@ -42,6 +43,7 @@ export default function TransitionForm({
   reportId,
   currentStatus,
   isLocked,
+  currentRole,
   allowedTransitions,
   initialState,
   action,
@@ -59,7 +61,17 @@ export default function TransitionForm({
         <p>
           <strong>Verrouillage :</strong> {isLocked ? "Oui" : "Non"}
         </p>
+        <p>
+          <strong>Rôle :</strong> {currentRole ?? "null"}
+        </p>
       </div>
+
+      {currentRole === "super_super_admin" && (
+        <div className="rounded border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-200">
+          Mode override super_super_admin actif : tous les statuts sont proposés,
+          sauf le statut courant.
+        </div>
+      )}
 
       <div>
         <label className="mb-1 block text-sm font-medium">Statut cible</label>
