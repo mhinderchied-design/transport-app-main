@@ -2,7 +2,10 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { runReportWorkflowTransition, type ReportTransitionState } from "./actions";
+import {
+  runReportWorkflowTransition,
+  type ReportTransitionState,
+} from "./actions";
 import TransitionForm from "./transition-form";
 
 type PageProps = {
@@ -26,6 +29,10 @@ type ReportRow = {
   workflow_last_changed_by: string | null;
   saisi_par_chauffeur_id: string | null;
   valide_chauffeur_at: string | null;
+};
+
+type TransitionRow = {
+  to_status: string;
 };
 
 function formatWorkflowLabel(status: string | null) {
@@ -114,21 +121,45 @@ async function ReportPageContent({ params }: PageProps) {
     .eq("id", reportId)
     .maybeSingle<ReportRow>();
 
+  let allowedTransitions: string[] = [];
+
+  if (report?.workflow_status && currentRoleData) {
+    const { data: transitionsData } = await supabase
+      .from("app_report_workflow_transitions")
+      .select("to_status")
+      .eq("from_status", report.workflow_status)
+      .eq("allowed_role", currentRoleData)
+      .eq("is_active", true)
+      .returns<TransitionRow[]>();
+
+    allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
+  }
+
   return (
     <main className="mx-auto max-w-5xl p-6 text-white">
-      <h1 className="mb-6 text-3xl font-bold">
-        Rapport journalier #{reportId}
-      </h1>
+      <h1 className="mb-6 text-3xl font-bold">Rapport journalier #{reportId}</h1>
 
       <section className="mb-6 rounded-lg border border-white/20 p-4">
         <h2 className="mb-4 text-xl font-semibold">Contexte utilisateur</h2>
 
         <div className="space-y-2 text-sm md:text-base">
-          <p><strong>User ID :</strong> {user?.id ?? "NON CONNECTÉ"}</p>
-          <p><strong>Email :</strong> {user?.email ?? "—"}</p>
-          <p><strong>Erreur session :</strong> {userError?.message ?? "aucune"}</p>
-          <p><strong>Rôle courant :</strong> {currentRoleData ? String(currentRoleData) : "null"}</p>
-          <p><strong>Erreur rôle :</strong> {currentRoleError?.message ?? "aucune"}</p>
+          <p>
+            <strong>User ID :</strong> {user?.id ?? "NON CONNECTÉ"}
+          </p>
+          <p>
+            <strong>Email :</strong> {user?.email ?? "—"}
+          </p>
+          <p>
+            <strong>Erreur session :</strong> {userError?.message ?? "aucune"}
+          </p>
+          <p>
+            <strong>Rôle courant :</strong>{" "}
+            {currentRoleData ? String(currentRoleData) : "null"}
+          </p>
+          <p>
+            <strong>Erreur rôle :</strong>{" "}
+            {currentRoleError?.message ?? "aucune"}
+          </p>
         </div>
       </section>
 
@@ -136,18 +167,40 @@ async function ReportPageContent({ params }: PageProps) {
         <h2 className="mb-4 text-xl font-semibold">Workflow</h2>
 
         {reportError ? (
-          <p className="text-red-300">Erreur chargement rapport : {reportError.message}</p>
+          <p className="text-red-300">
+            Erreur chargement rapport : {reportError.message}
+          </p>
         ) : !report ? (
           <p>Rapport introuvable</p>
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p><strong>ID :</strong> {report.id}</p>
-            <p><strong>Statut :</strong> {formatWorkflowLabel(report.workflow_status)}</p>
-            <p><strong>Verrouillé :</strong> {report.workflow_locked ? "Oui" : "Non"}</p>
-            <p><strong>Dernière modification :</strong> {formatDate(report.workflow_last_changed_at)}</p>
-            <p><strong>Modifié par :</strong> {report.workflow_last_changed_by ?? "—"}</p>
-            <p><strong>Saisi par chauffeur :</strong> {report.saisi_par_chauffeur_id ?? "—"}</p>
-            <p><strong>Validation chauffeur :</strong> {formatDate(report.valide_chauffeur_at)}</p>
+            <p>
+              <strong>ID :</strong> {report.id}
+            </p>
+            <p>
+              <strong>Statut :</strong>{" "}
+              {formatWorkflowLabel(report.workflow_status)}
+            </p>
+            <p>
+              <strong>Verrouillé :</strong>{" "}
+              {report.workflow_locked ? "Oui" : "Non"}
+            </p>
+            <p>
+              <strong>Dernière modification :</strong>{" "}
+              {formatDate(report.workflow_last_changed_at)}
+            </p>
+            <p>
+              <strong>Modifié par :</strong>{" "}
+              {report.workflow_last_changed_by ?? "—"}
+            </p>
+            <p>
+              <strong>Saisi par chauffeur :</strong>{" "}
+              {report.saisi_par_chauffeur_id ?? "—"}
+            </p>
+            <p>
+              <strong>Validation chauffeur :</strong>{" "}
+              {formatDate(report.valide_chauffeur_at)}
+            </p>
           </div>
         )}
       </section>
@@ -156,18 +209,34 @@ async function ReportPageContent({ params }: PageProps) {
         <h2 className="mb-4 text-xl font-semibold">Résumé métier</h2>
 
         {reportError ? (
-          <p className="text-red-300">Impossible d’afficher le résumé métier.</p>
+          <p className="text-red-300">
+            Impossible d’afficher le résumé métier.
+          </p>
         ) : !report ? (
           <p>Rapport introuvable</p>
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p><strong>Société :</strong> {report.societe_id ?? "—"}</p>
-            <p><strong>Site :</strong> {report.site_id ?? "—"}</p>
-            <p><strong>Salarié :</strong> {report.salarie_id ?? "—"}</p>
-            <p><strong>Véhicule :</strong> {report.vehicule_id ?? "—"}</p>
-            <p><strong>Client :</strong> {report.client_id ?? "—"}</p>
-            <p><strong>Site client :</strong> {report.site_client_id ?? "—"}</p>
-            <p><strong>Date rapport :</strong> {formatDate(report.date_rapport)}</p>
+            <p>
+              <strong>Société :</strong> {report.societe_id ?? "—"}
+            </p>
+            <p>
+              <strong>Site :</strong> {report.site_id ?? "—"}
+            </p>
+            <p>
+              <strong>Salarié :</strong> {report.salarie_id ?? "—"}
+            </p>
+            <p>
+              <strong>Véhicule :</strong> {report.vehicule_id ?? "—"}
+            </p>
+            <p>
+              <strong>Client :</strong> {report.client_id ?? "—"}
+            </p>
+            <p>
+              <strong>Site client :</strong> {report.site_client_id ?? "—"}
+            </p>
+            <p>
+              <strong>Date rapport :</strong> {formatDate(report.date_rapport)}
+            </p>
           </div>
         )}
       </section>
@@ -180,6 +249,7 @@ async function ReportPageContent({ params }: PageProps) {
             reportId={report.id}
             currentStatus={report.workflow_status}
             isLocked={Boolean(report.workflow_locked)}
+            allowedTransitions={allowedTransitions}
             initialState={initialTransitionState}
             action={runReportWorkflowTransition}
           />
@@ -191,7 +261,9 @@ async function ReportPageContent({ params }: PageProps) {
 
 export default function ReportPage(props: PageProps) {
   return (
-    <Suspense fallback={<div className="p-6 text-white">Chargement du rapport…</div>}>
+    <Suspense
+      fallback={<div className="p-6 text-white">Chargement du rapport…</div>}
+    >
       <ReportPageContent {...props} />
     </Suspense>
   );
