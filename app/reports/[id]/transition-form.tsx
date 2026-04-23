@@ -7,6 +7,7 @@ type Props = {
   reportId: number;
   currentStatus: string | null;
   isLocked: boolean;
+  allowedTransitions: string[];
   initialState: ReportTransitionState;
   action: (
     state: ReportTransitionState,
@@ -14,21 +15,34 @@ type Props = {
   ) => Promise<ReportTransitionState>;
 };
 
-const ALL_STATUSES = [
-  "brouillon",
-  "saisi_chauffeur",
-  "en_controle_admin",
-  "valide_admin",
-  "en_attente_prefacturation",
-  "prefacture",
-  "valide_super_admin",
-  "verrouille",
-];
+function formatWorkflowLabel(status: string) {
+  switch (status) {
+    case "brouillon":
+      return "Brouillon";
+    case "saisi_chauffeur":
+      return "Saisi chauffeur";
+    case "en_controle_admin":
+      return "En contrôle admin";
+    case "valide_admin":
+      return "Validé admin";
+    case "en_attente_prefacturation":
+      return "En attente préfacturation";
+    case "prefacture":
+      return "Préfacturé";
+    case "valide_super_admin":
+      return "Validé super admin";
+    case "verrouille":
+      return "Verrouillé";
+    default:
+      return status;
+  }
+}
 
 export default function TransitionForm({
   reportId,
   currentStatus,
   isLocked,
+  allowedTransitions,
   initialState,
   action,
 }: Props) {
@@ -58,11 +72,16 @@ export default function TransitionForm({
           <option value="" disabled>
             Choisir un statut
           </option>
-          {ALL_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
+
+          {allowedTransitions.length === 0 ? (
+            <option disabled>Aucune transition autorisée</option>
+          ) : (
+            allowedTransitions.map((status) => (
+              <option key={status} value={status}>
+                {formatWorkflowLabel(status)}
+              </option>
+            ))
+          )}
         </select>
       </div>
 
@@ -77,7 +96,7 @@ export default function TransitionForm({
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || allowedTransitions.length === 0}
         className="rounded border border-white/20 px-4 py-2 disabled:opacity-50"
       >
         {pending ? "Exécution..." : "Exécuter la transition"}
