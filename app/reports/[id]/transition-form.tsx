@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { ReportTransitionState } from "./actions";
 
 type Props = {
@@ -48,7 +49,16 @@ export default function TransitionForm({
   initialState,
   action,
 }: Props) {
+  const router = useRouter();
+
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  // 🔥 REFRESH AUTO APRÈS SUCCÈS
+  useEffect(() => {
+    if (state.transition_ok) {
+      router.refresh();
+    }
+  }, [state.transition_ok, router]);
 
   return (
     <form action={formAction} className="space-y-4">
