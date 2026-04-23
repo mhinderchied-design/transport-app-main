@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { runReportWorkflowTransition, type ReportTransitionState } from "./actions";
+import TransitionForm from "./transition-form";
 
 type PageProps = {
   params: Promise<{
@@ -61,6 +63,13 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+const initialTransitionState: ReportTransitionState = {
+  transition_ok: false,
+  old_status: null,
+  new_status: null,
+  transition_message: "Aucune transition lancée pour le moment.",
+};
+
 async function ReportPageContent({ params }: PageProps) {
   await connection();
 
@@ -115,23 +124,11 @@ async function ReportPageContent({ params }: PageProps) {
         <h2 className="mb-4 text-xl font-semibold">Contexte utilisateur</h2>
 
         <div className="space-y-2 text-sm md:text-base">
-          <p>
-            <strong>User ID :</strong> {user?.id ?? "NON CONNECTÉ"}
-          </p>
-          <p>
-            <strong>Email :</strong> {user?.email ?? "—"}
-          </p>
-          <p>
-            <strong>Erreur session :</strong> {userError?.message ?? "aucune"}
-          </p>
-          <p>
-            <strong>Rôle courant :</strong>{" "}
-            {currentRoleData ? String(currentRoleData) : "null"}
-          </p>
-          <p>
-            <strong>Erreur rôle :</strong>{" "}
-            {currentRoleError?.message ?? "aucune"}
-          </p>
+          <p><strong>User ID :</strong> {user?.id ?? "NON CONNECTÉ"}</p>
+          <p><strong>Email :</strong> {user?.email ?? "—"}</p>
+          <p><strong>Erreur session :</strong> {userError?.message ?? "aucune"}</p>
+          <p><strong>Rôle courant :</strong> {currentRoleData ? String(currentRoleData) : "null"}</p>
+          <p><strong>Erreur rôle :</strong> {currentRoleError?.message ?? "aucune"}</p>
         </div>
       </section>
 
@@ -139,40 +136,18 @@ async function ReportPageContent({ params }: PageProps) {
         <h2 className="mb-4 text-xl font-semibold">Workflow</h2>
 
         {reportError ? (
-          <p className="text-red-300">
-            Erreur chargement rapport : {reportError.message}
-          </p>
+          <p className="text-red-300">Erreur chargement rapport : {reportError.message}</p>
         ) : !report ? (
           <p>Rapport introuvable</p>
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p>
-              <strong>ID :</strong> {report.id}
-            </p>
-            <p>
-              <strong>Statut :</strong>{" "}
-              {formatWorkflowLabel(report.workflow_status)}
-            </p>
-            <p>
-              <strong>Verrouillé :</strong>{" "}
-              {report.workflow_locked ? "Oui" : "Non"}
-            </p>
-            <p>
-              <strong>Dernière modification :</strong>{" "}
-              {formatDate(report.workflow_last_changed_at)}
-            </p>
-            <p>
-              <strong>Modifié par :</strong>{" "}
-              {report.workflow_last_changed_by ?? "—"}
-            </p>
-            <p>
-              <strong>Saisi par chauffeur :</strong>{" "}
-              {report.saisi_par_chauffeur_id ?? "—"}
-            </p>
-            <p>
-              <strong>Validation chauffeur :</strong>{" "}
-              {formatDate(report.valide_chauffeur_at)}
-            </p>
+            <p><strong>ID :</strong> {report.id}</p>
+            <p><strong>Statut :</strong> {formatWorkflowLabel(report.workflow_status)}</p>
+            <p><strong>Verrouillé :</strong> {report.workflow_locked ? "Oui" : "Non"}</p>
+            <p><strong>Dernière modification :</strong> {formatDate(report.workflow_last_changed_at)}</p>
+            <p><strong>Modifié par :</strong> {report.workflow_last_changed_by ?? "—"}</p>
+            <p><strong>Saisi par chauffeur :</strong> {report.saisi_par_chauffeur_id ?? "—"}</p>
+            <p><strong>Validation chauffeur :</strong> {formatDate(report.valide_chauffeur_at)}</p>
           </div>
         )}
       </section>
@@ -181,45 +156,35 @@ async function ReportPageContent({ params }: PageProps) {
         <h2 className="mb-4 text-xl font-semibold">Résumé métier</h2>
 
         {reportError ? (
-          <p className="text-red-300">
-            Impossible d’afficher le résumé métier.
-          </p>
+          <p className="text-red-300">Impossible d’afficher le résumé métier.</p>
         ) : !report ? (
           <p>Rapport introuvable</p>
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p>
-              <strong>Société :</strong> {report.societe_id ?? "—"}
-            </p>
-            <p>
-              <strong>Site :</strong> {report.site_id ?? "—"}
-            </p>
-            <p>
-              <strong>Salarié :</strong> {report.salarie_id ?? "—"}
-            </p>
-            <p>
-              <strong>Véhicule :</strong> {report.vehicule_id ?? "—"}
-            </p>
-            <p>
-              <strong>Client :</strong> {report.client_id ?? "—"}
-            </p>
-            <p>
-              <strong>Site client :</strong> {report.site_client_id ?? "—"}
-            </p>
-            <p>
-              <strong>Date rapport :</strong> {formatDate(report.date_rapport)}
-            </p>
+            <p><strong>Société :</strong> {report.societe_id ?? "—"}</p>
+            <p><strong>Site :</strong> {report.site_id ?? "—"}</p>
+            <p><strong>Salarié :</strong> {report.salarie_id ?? "—"}</p>
+            <p><strong>Véhicule :</strong> {report.vehicule_id ?? "—"}</p>
+            <p><strong>Client :</strong> {report.client_id ?? "—"}</p>
+            <p><strong>Site client :</strong> {report.site_client_id ?? "—"}</p>
+            <p><strong>Date rapport :</strong> {formatDate(report.date_rapport)}</p>
           </div>
         )}
       </section>
 
-      <section className="rounded-lg border border-dashed border-white/20 p-4">
-        <h2 className="mb-2 text-xl font-semibold">Suite prévue</h2>
-        <p className="text-sm text-white/80 md:text-base">
-          La prochaine étape sera d’ajouter ici le panneau d’actions workflow
-          réelles, en réutilisant la logique déjà validée sur la page de test.
-        </p>
-      </section>
+      {report && (
+        <section className="rounded-lg border border-white/20 p-4">
+          <h2 className="mb-4 text-xl font-semibold">Actions workflow</h2>
+
+          <TransitionForm
+            reportId={report.id}
+            currentStatus={report.workflow_status}
+            isLocked={Boolean(report.workflow_locked)}
+            initialState={initialTransitionState}
+            action={runReportWorkflowTransition}
+          />
+        </section>
+      )}
     </main>
   );
 }
