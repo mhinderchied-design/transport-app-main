@@ -35,6 +35,17 @@ type TransitionRow = {
   to_status: string;
 };
 
+const ALL_WORKFLOW_STATUSES = [
+  "brouillon",
+  "saisi_chauffeur",
+  "en_controle_admin",
+  "valide_admin",
+  "en_attente_prefacturation",
+  "prefacture",
+  "valide_super_admin",
+  "verrouille",
+];
+
 function formatWorkflowLabel(status: string | null) {
   switch (status) {
     case "brouillon":
@@ -98,6 +109,8 @@ async function ReportPageContent({ params }: PageProps) {
     "app_get_current_role"
   );
 
+  const currentRole = currentRoleData ? String(currentRoleData) : null;
+
   const { data: report, error: reportError } = await supabase
     .from("rapports_journaliers")
     .select(
@@ -123,16 +136,22 @@ async function ReportPageContent({ params }: PageProps) {
 
   let allowedTransitions: string[] = [];
 
-  if (report?.workflow_status && currentRoleData) {
-    const { data: transitionsData } = await supabase
-      .from("app_report_workflow_transitions")
-      .select("to_status")
-      .eq("from_status", report.workflow_status)
-      .eq("allowed_role", currentRoleData)
-      .eq("is_active", true)
-      .returns<TransitionRow[]>();
+  if (report?.workflow_status && currentRole) {
+    if (currentRole === "super_super_admin") {
+      allowedTransitions = ALL_WORKFLOW_STATUSES.filter(
+        (status) => status !== report.workflow_status
+      );
+    } else {
+      const { data: transitionsData } = await supabase
+        .from("app_report_workflow_transitions")
+        .select("to_status")
+        .eq("from_status", report.workflow_status)
+        .eq("allowed_role", currentRole)
+        .eq("is_active", true)
+        .returns<TransitionRow[]>();
 
-    allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
+      allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
+    }
   }
 
   return (
@@ -153,12 +172,10 @@ async function ReportPageContent({ params }: PageProps) {
             <strong>Erreur session :</strong> {userError?.message ?? "aucune"}
           </p>
           <p>
-            <strong>Rôle courant :</strong>{" "}
-            {currentRoleData ? String(currentRoleData) : "null"}
+            <strong>Rôle courant :</strong> {currentRole ?? "null"}
           </p>
           <p>
-            <strong>Erreur rôle :</strong>{" "}
-            {currentRoleError?.message ?? "aucune"}
+            <strong>Erreur rôle :</strong> {currentRoleError?.message ?? "aucune"}
           </p>
         </div>
       </section>
@@ -178,20 +195,17 @@ async function ReportPageContent({ params }: PageProps) {
               <strong>ID :</strong> {report.id}
             </p>
             <p>
-              <strong>Statut :</strong>{" "}
-              {formatWorkflowLabel(report.workflow_status)}
+              <strong>Statut :</strong> {formatWorkflowLabel(report.workflow_status)}
             </p>
             <p>
-              <strong>Verrouillé :</strong>{" "}
-              {report.workflow_locked ? "Oui" : "Non"}
+              <strong>Verrouillé :</strong> {report.workflow_locked ? "Oui" : "Non"}
             </p>
             <p>
               <strong>Dernière modification :</strong>{" "}
               {formatDate(report.workflow_last_changed_at)}
             </p>
             <p>
-              <strong>Modifié par :</strong>{" "}
-              {report.workflow_last_changed_by ?? "—"}
+              <strong>Modifié par :</strong> {report.workflow_last_changed_by ?? "—"}
             </p>
             <p>
               <strong>Saisi par chauffeur :</strong>{" "}
@@ -249,6 +263,7 @@ async function ReportPageContent({ params }: PageProps) {
             reportId={report.id}
             currentStatus={report.workflow_status}
             isLocked={Boolean(report.workflow_locked)}
+            currentRole={currentRole}
             allowedTransitions={allowedTransitions}
             initialState={initialTransitionState}
             action={runReportWorkflowTransition}
