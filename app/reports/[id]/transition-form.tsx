@@ -90,6 +90,12 @@ export default function TransitionForm({
         <p>old_status : {state.old_status ?? "null"}</p>
         <p>new_status : {state.new_status ?? "null"}</p>
       </div>
+      {currentRole === "super_super_admin" && (
+  <div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-200">
+    Mode override super_super_admin actif : tous les statuts sont proposés,
+    sauf le statut courant.
+  </div>
+)}
     </form>
   );
 }
