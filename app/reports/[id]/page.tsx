@@ -42,6 +42,18 @@ type TransitionRow = {
   to_status: string;
 };
 
+type WorkflowLogRow = {
+  id: number;
+  old_status: string | null;
+  old_status_label: string | null;
+  new_status: string | null;
+  new_status_label: string | null;
+  changed_role: string | null;
+  comment_text: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
 const ALL_WORKFLOW_STATUSES = [
   "brouillon",
   "saisi_chauffeur",
@@ -75,6 +87,7 @@ function formatWorkflowLabel(status: string | null) {
       return status ?? "Inconnu";
   }
 }
+
 function getStatusBadge(
   status: string | null,
   label: string,
@@ -208,6 +221,37 @@ async function ReportPageContent({ params }: PageProps) {
     )
     .eq("id", reportId)
     .maybeSingle<ReportRow>();
+
+  const { data: workflowLogs, error: workflowLogsError } = await supabase
+    .from("app_report_workflow_log")
+    .select(
+      `
+        id,
+        old_status,
+        old_status_ref:report_workflow_statuses!app_report_workflow_log_old_status_fkey(label),
+        new_status,
+        new_status_ref:report_workflow_statuses!app_report_workflow_log_new_status_fkey(label),
+        changed_role,
+        comment_text,
+        metadata,
+        created_at
+      `
+    )
+    .eq("rapport_id", reportId)
+    .order("created_at", { ascending: false });
+
+  const formattedWorkflowLogs: WorkflowLogRow[] =
+    workflowLogs?.map((log: any) => ({
+      id: log.id,
+      old_status: log.old_status,
+      old_status_label: log.old_status_ref?.label ?? null,
+      new_status: log.new_status,
+      new_status_label: log.new_status_ref?.label ?? null,
+      changed_role: log.changed_role,
+      comment_text: log.comment_text,
+      metadata: log.metadata,
+      created_at: log.created_at,
+    })) ?? [];
 
   let statusBadge: WorkflowStatusBadge | null = null;
 
@@ -377,6 +421,70 @@ async function ReportPageContent({ params }: PageProps) {
             <p>
               <strong>Date rapport :</strong> {formatDate(report.date_rapport)}
             </p>
+          </div>
+        )}
+      </section>
+
+      <section className="mb-6 rounded-lg border border-white/20 p-4">
+        <h2 className="mb-4 text-xl font-semibold">
+          Historique des transitions
+        </h2>
+
+        {workflowLogsError ? (
+          <p className="text-red-300">
+            Erreur chargement historique : {workflowLogsError.message}
+          </p>
+        ) : formattedWorkflowLogs.length === 0 ? (
+          <p className="text-white/70">
+            Aucun historique workflow pour ce rapport.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {formattedWorkflowLogs.map((log) => {
+              const oldLabel =
+                log.old_status_label ?? formatWorkflowLabel(log.old_status);
+              const newLabel =
+                log.new_status_label ?? formatWorkflowLabel(log.new_status);
+
+              return (
+                <div
+                  key={log.id}
+                  className="relative rounded-lg border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {getStatusBadge(log.old_status, oldLabel, null)}
+                      <span className="text-white/50">→</span>
+                      {getStatusBadge(log.new_status, newLabel, null)}
+                    </div>
+
+                    <span className="text-xs text-white/50">
+                      {formatDate(log.created_at)}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-2 text-sm text-white/80 md:grid-cols-2">
+                    <p>
+                      <strong>Rôle :</strong> {log.changed_role ?? "—"}
+                    </p>
+
+                    <p>
+                      <strong>Commentaire :</strong>{" "}
+                      {log.comment_text?.trim() ? log.comment_text : "—"}
+                    </p>
+
+                    <p className="md:col-span-2">
+                      <strong>Metadata :</strong>{" "}
+                      <span className="text-xs text-white/50">
+                        {log.metadata
+                          ? JSON.stringify(log.metadata)
+                          : "—"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
