@@ -449,7 +449,9 @@ async function ReportPageContent({ params }: PageProps) {
             Aucun historique workflow pour ce rapport.
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="relative pl-6">
+            <div className="absolute bottom-0 left-2 top-0 w-px bg-white/10" />
+
             {formattedWorkflowLogs.map((log) => {
               const oldLabel =
                 log.old_status_label ?? formatWorkflowLabel(log.old_status);
@@ -457,38 +459,42 @@ async function ReportPageContent({ params }: PageProps) {
                 log.new_status_label ?? formatWorkflowLabel(log.new_status);
 
               return (
-                <div
-                  key={log.id}
-                  className="relative rounded-lg border border-white/10 bg-white/5 p-4"
-                >
-                  <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {getStatusBadge(log.old_status, oldLabel, null)}
-                      <span className="text-white/50">→</span>
-                      {getStatusBadge(log.new_status, newLabel, null)}
+                <div key={log.id} className="relative mb-6 last:mb-0">
+                  <div className="absolute left-[-23px] top-4 h-4 w-4 rounded-full border border-white/30 bg-white shadow-sm" />
+
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {getStatusBadge(log.old_status, oldLabel, null)}
+                        <span className="text-white/50">→</span>
+                        {getStatusBadge(log.new_status, newLabel, null)}
+                      </div>
+
+                      <span className="text-xs text-white/50">
+                        {formatDate(log.created_at)}
+                      </span>
                     </div>
 
-                    <span className="text-xs text-white/50">
-                      {formatDate(log.created_at)}
-                    </span>
-                  </div>
+                    <div className="grid gap-2 text-sm text-white/80 md:grid-cols-2">
+                      <p>
+                        <strong>Rôle :</strong> {log.changed_role ?? "—"}
+                      </p>
 
-                  <div className="grid gap-2 text-sm text-white/80 md:grid-cols-2">
-                    <p>
-                      <strong>Rôle :</strong> {log.changed_role ?? "—"}
-                    </p>
+                      <p>
+                        <strong>Commentaire :</strong>{" "}
+                        {log.comment_text?.trim() ? log.comment_text : "—"}
+                      </p>
 
-                    <p>
-                      <strong>Commentaire :</strong>{" "}
-                      {log.comment_text?.trim() ? log.comment_text : "—"}
-                    </p>
-
-                    <p className="md:col-span-2">
-                      <strong>Metadata :</strong>{" "}
-                      <span className="text-xs text-white/50">
-                        {log.metadata ? JSON.stringify(log.metadata) : "—"}
-                      </span>
-                    </p>
+                      {log.metadata &&
+                        Object.keys(log.metadata).length > 0 && (
+                          <p className="md:col-span-2">
+                            <strong>Metadata :</strong>{" "}
+                            <span className="text-xs text-white/50">
+                              {JSON.stringify(log.metadata)}
+                            </span>
+                          </p>
+                        )}
+                    </div>
                   </div>
                 </div>
               );
