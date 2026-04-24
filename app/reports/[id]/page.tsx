@@ -84,40 +84,57 @@ function getStatusBadge(
   if (!status) return null;
 
   const base =
-    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium";
+    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm";
 
   const map: Record<string, string> = {
-    brouillon: "border-gray-500/30 bg-gray-500/10 text-gray-300",
-    saisi_chauffeur: "border-blue-500/40 bg-blue-500/10 text-blue-300",
-    en_controle_admin: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
-    valide_admin: "border-green-500/40 bg-green-500/10 text-green-300",
+    brouillon: "border-gray-500/40 bg-gray-500/15 text-gray-200",
+    saisi_chauffeur: "border-blue-500/50 bg-blue-500/15 text-blue-200",
+    en_controle_admin: "border-yellow-500/50 bg-yellow-500/15 text-yellow-200",
+    valide_admin: "border-green-500/50 bg-green-500/15 text-green-200",
     en_attente_prefacturation:
-      "border-orange-500/40 bg-orange-500/10 text-orange-300",
-    prefacture: "border-purple-500/40 bg-purple-500/10 text-purple-300",
+      "border-orange-500/50 bg-orange-500/15 text-orange-200",
+    prefacture: "border-purple-500/50 bg-purple-500/15 text-purple-200",
     valide_super_admin:
-      "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-    verrouille: "border-red-500/40 bg-red-500/10 text-red-300",
+      "border-emerald-500/50 bg-emerald-500/15 text-emerald-200",
+    verrouille: "border-red-500/50 bg-red-500/15 text-red-200",
   };
 
   const dotColor: Record<string, string> = {
-    brouillon: "bg-gray-400",
-    saisi_chauffeur: "bg-blue-400",
-    en_controle_admin: "bg-yellow-400",
-    valide_admin: "bg-green-400",
-    en_attente_prefacturation: "bg-orange-400",
-    prefacture: "bg-purple-400",
-    valide_super_admin: "bg-emerald-400",
-    verrouille: "bg-red-400",
+    brouillon: "bg-gray-300",
+    saisi_chauffeur: "bg-blue-300",
+    en_controle_admin: "bg-yellow-300",
+    valide_admin: "bg-green-300",
+    en_attente_prefacturation: "bg-orange-300",
+    prefacture: "bg-purple-300",
+    valide_super_admin: "bg-emerald-300",
+    verrouille: "bg-red-300",
+  };
+
+  const icon: Record<string, string> = {
+    brouillon: "•",
+    saisi_chauffeur: "●",
+    en_controle_admin: "⏳",
+    valide_admin: "✓",
+    en_attente_prefacturation: "⌛",
+    prefacture: "◆",
+    valide_super_admin: "✓",
+    verrouille: "🔒",
   };
 
   return (
-    <span className={`${base} ${map[status] ?? "border-white/20 bg-white/10 text-white"}`}>
+    <span
+      className={`${base} ${
+        map[status] ?? "border-white/20 bg-white/10 text-white"
+      }`}
+    >
       <span
-        className={`h-2 w-2 rounded-full ${
+        className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-black ${
           dotColor[status] ?? ""
         }`}
         style={!dotColor[status] ? { backgroundColor: color ?? "#6b7280" } : undefined}
-      />
+      >
+        {icon[status] ?? "•"}
+      </span>
       {label}
     </span>
   );
