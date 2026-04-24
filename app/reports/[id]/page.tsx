@@ -2,6 +2,11 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  runReportWorkflowTransition,
+  type ReportTransitionState,
+} from "./actions";
+import TransitionForm from "./transition-form";
 
 type PageProps = {
   params: Promise<{
@@ -10,15 +15,66 @@ type PageProps = {
 };
 
 type ReportRow = {
-  rapport_id: number;
+  id: number;
+  societe_id: number | null;
+  site_id: number | null;
+  salarie_id: number | null;
+  vehicule_id: number | null;
+  client_id: number | null;
+  site_client_id: number | null;
+  date_rapport: string | null;
   workflow_status: string | null;
   workflow_locked: boolean | null;
   workflow_last_changed_at: string | null;
   workflow_last_changed_by: string | null;
-  workflow_status_label: string | null;
-  workflow_status_badge_variant: string | null;
-  workflow_status_badge_color: string | null;
+  saisi_par_chauffeur_id: string | null;
+  valide_chauffeur_at: string | null;
 };
+
+type WorkflowStatusBadge = {
+  code: string;
+  label: string;
+  badge_variant: string;
+  badge_color: string | null;
+};
+
+type TransitionRow = {
+  to_status: string;
+};
+
+const ALL_WORKFLOW_STATUSES = [
+  "brouillon",
+  "saisi_chauffeur",
+  "en_controle_admin",
+  "valide_admin",
+  "en_attente_prefacturation",
+  "prefacture",
+  "valide_super_admin",
+  "verrouille",
+];
+
+function formatWorkflowLabel(status: string | null) {
+  switch (status) {
+    case "brouillon":
+      return "Brouillon";
+    case "saisi_chauffeur":
+      return "Saisi chauffeur";
+    case "en_controle_admin":
+      return "En contrôle admin";
+    case "valide_admin":
+      return "Validé admin";
+    case "en_attente_prefacturation":
+      return "En attente préfacturation";
+    case "prefacture":
+      return "Préfacturé";
+    case "valide_super_admin":
+      return "Validé super admin";
+    case "verrouille":
+      return "Verrouillé";
+    default:
+      return status ?? "Inconnu";
+  }
+}
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -31,6 +87,13 @@ function formatDate(value: string | null) {
     timeStyle: "short",
   }).format(date);
 }
+
+const initialTransitionState: ReportTransitionState = {
+  transition_ok: false,
+  old_status: null,
+  new_status: null,
+  transition_message: "Aucune transition lancée pour le moment.",
+};
 
 async function ReportPageContent({ params }: PageProps) {
   await connection();
@@ -53,28 +116,71 @@ async function ReportPageContent({ params }: PageProps) {
     "app_get_current_role"
   );
 
+  const currentRole = currentRoleData ? String(currentRoleData) : null;
+
   const { data: report, error: reportError } = await supabase
-    .from("v_report_workflow_overview_with_badges")
+    .from("rapports_journaliers")
     .select(
       `
-        rapport_id,
+        id,
+        societe_id,
+        site_id,
+        salarie_id,
+        vehicule_id,
+        client_id,
+        site_client_id,
+        date_rapport,
         workflow_status,
         workflow_locked,
         workflow_last_changed_at,
         workflow_last_changed_by,
-        workflow_status_label,
-        workflow_status_badge_variant,
-        workflow_status_badge_color
+        saisi_par_chauffeur_id,
+        valide_chauffeur_at
       `
     )
-    .eq("rapport_id", reportId)
+    .eq("id", reportId)
     .maybeSingle<ReportRow>();
+
+  let statusBadge: WorkflowStatusBadge | null = null;
+
+  if (report?.workflow_status) {
+    const { data: badgeData } = await supabase
+      .from("report_workflow_statuses")
+      .select("code, label, badge_variant, badge_color")
+      .eq("code", report.workflow_status)
+      .maybeSingle<WorkflowStatusBadge>();
+
+    statusBadge = badgeData ?? null;
+  }
+
+  let allowedTransitions: string[] = [];
+
+  if (report?.workflow_status && currentRole) {
+    if (currentRole === "super_super_admin") {
+      allowedTransitions = ALL_WORKFLOW_STATUSES.filter(
+        (status) => status !== report.workflow_status
+      );
+    } else {
+      const { data: transitionsData } = await supabase
+        .from("app_report_workflow_transitions")
+        .select("to_status")
+        .eq("from_status", report.workflow_status)
+        .eq("allowed_role", currentRole)
+        .eq("is_active", true)
+        .returns<TransitionRow[]>();
+
+      allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
+    }
+  }
+
+  const workflowLabel =
+    statusBadge?.label ?? formatWorkflowLabel(report?.workflow_status ?? null);
+
+  const workflowBadgeColor = statusBadge?.badge_color ?? "#6b7280";
 
   return (
     <main className="mx-auto max-w-5xl p-6 text-white">
-      <h1 className="mb-6 text-3xl font-bold">
-        Rapport journalier #{reportId}
-      </h1>
+      <h1 className="mb-6 text-3xl font-bold">Rapport journalier #{reportId}</h1>
 
       <section className="mb-6 rounded-lg border border-white/20 p-4">
         <h2 className="mb-4 text-xl font-semibold">Contexte utilisateur</h2>
@@ -90,12 +196,10 @@ async function ReportPageContent({ params }: PageProps) {
             <strong>Erreur session :</strong> {userError?.message ?? "aucune"}
           </p>
           <p>
-            <strong>Rôle courant :</strong>{" "}
-            {currentRoleData ? String(currentRoleData) : "null"}
+            <strong>Rôle courant :</strong> {currentRole ?? "null"}
           </p>
           <p>
-            <strong>Erreur rôle :</strong>{" "}
-            {currentRoleError?.message ?? "aucune"}
+            <strong>Erreur rôle :</strong> {currentRoleError?.message ?? "aucune"}
           </p>
         </div>
       </section>
@@ -112,25 +216,27 @@ async function ReportPageContent({ params }: PageProps) {
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
             <p>
-              <strong>ID :</strong> {report.rapport_id}
+              <strong>ID :</strong> {report.id}
             </p>
 
             <p>
               <strong>Statut :</strong>{" "}
               <span
-                className="inline-flex rounded-md px-2 py-1 text-xs font-semibold text-white"
                 style={{
-                  backgroundColor:
-                    report.workflow_status_badge_color || "#6b7280",
+                  backgroundColor: workflowBadgeColor,
+                  color: "white",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
                 }}
               >
-                {report.workflow_status_label ?? report.workflow_status ?? "Inconnu"}
+                {workflowLabel}
               </span>
             </p>
 
             <p>
-              <strong>Statut technique :</strong>{" "}
-              {report.workflow_status ?? "—"}
+              <strong>Statut technique :</strong> {report.workflow_status ?? "—"}
             </p>
 
             <p>
@@ -147,6 +253,16 @@ async function ReportPageContent({ params }: PageProps) {
               <strong>Modifié par :</strong>{" "}
               {report.workflow_last_changed_by ?? "—"}
             </p>
+
+            <p>
+              <strong>Saisi par chauffeur :</strong>{" "}
+              {report.saisi_par_chauffeur_id ?? "—"}
+            </p>
+
+            <p>
+              <strong>Validation chauffeur :</strong>{" "}
+              {formatDate(report.valide_chauffeur_at)}
+            </p>
           </div>
         )}
       </section>
@@ -154,25 +270,63 @@ async function ReportPageContent({ params }: PageProps) {
       <section className="mb-6 rounded-lg border border-white/20 p-4">
         <h2 className="mb-4 text-xl font-semibold">Résumé métier</h2>
 
-        <p className="text-sm text-white/80 md:text-base">
-          Le résumé métier complet sera reconnecté ensuite, après validation
-          définitive du badge.
-        </p>
+        {reportError ? (
+          <p className="text-red-300">
+            Impossible d’afficher le résumé métier.
+          </p>
+        ) : !report ? (
+          <p>Rapport introuvable</p>
+        ) : (
+          <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
+            <p>
+              <strong>Société :</strong> {report.societe_id ?? "—"}
+            </p>
+            <p>
+              <strong>Site :</strong> {report.site_id ?? "—"}
+            </p>
+            <p>
+              <strong>Salarié :</strong> {report.salarie_id ?? "—"}
+            </p>
+            <p>
+              <strong>Véhicule :</strong> {report.vehicule_id ?? "—"}
+            </p>
+            <p>
+              <strong>Client :</strong> {report.client_id ?? "—"}
+            </p>
+            <p>
+              <strong>Site client :</strong> {report.site_client_id ?? "—"}
+            </p>
+            <p>
+              <strong>Date rapport :</strong> {formatDate(report.date_rapport)}
+            </p>
+          </div>
+        )}
       </section>
 
-      <section className="rounded-lg border border-dashed border-white/20 p-4">
-        <h2 className="mb-2 text-xl font-semibold">Suite prévue</h2>
-        <p className="text-sm text-white/80 md:text-base">
-          Après validation du badge, on passe à l’étape 2 : verrouillage visuel.
-        </p>
-      </section>
+      {report && (
+        <section className="rounded-lg border border-white/20 p-4">
+          <h2 className="mb-4 text-xl font-semibold">Actions workflow</h2>
+
+          <TransitionForm
+            reportId={report.id}
+            currentStatus={report.workflow_status}
+            isLocked={Boolean(report.workflow_locked)}
+            currentRole={currentRole}
+            allowedTransitions={allowedTransitions}
+            initialState={initialTransitionState}
+            action={runReportWorkflowTransition}
+          />
+        </section>
+      )}
     </main>
   );
 }
 
 export default function ReportPage(props: PageProps) {
   return (
-    <Suspense fallback={<div className="p-6 text-white">Chargement du rapport…</div>}>
+    <Suspense
+      fallback={<div className="p-6 text-white">Chargement du rapport…</div>}
+    >
       <ReportPageContent {...props} />
     </Suspense>
   );
