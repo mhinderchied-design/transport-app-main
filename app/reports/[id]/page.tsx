@@ -1,11 +1,19 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function ReportContent({ id }: { id: string }) {
+async function ReportContent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await connection();
+
+  const { id } = await params;
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -15,7 +23,7 @@ async function ReportContent({ id }: { id: string }) {
     .single();
 
   if (error || !data) {
-    return <div>Erreur chargement rapport</div>;
+    return <div style={{ padding: "20px" }}>Erreur chargement rapport</div>;
   }
 
   return (
@@ -56,12 +64,10 @@ async function ReportContent({ id }: { id: string }) {
   );
 }
 
-export default async function ReportPage({ params }: PageProps) {
-  const { id } = await params;
-
+export default function ReportPage({ params }: PageProps) {
   return (
     <Suspense fallback={<div style={{ padding: "20px" }}>Chargement du rapport...</div>}>
-      <ReportContent id={id} />
+      <ReportContent params={params} />
     </Suspense>
   );
 }
