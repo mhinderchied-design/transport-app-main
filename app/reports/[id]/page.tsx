@@ -27,10 +27,12 @@ async function ReportContent({
   }
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+      {/* 🔹 Titre */}
       <h1>Rapport #{data.rapport_id}</h1>
 
-      <div style={{ marginTop: "20px" }}>
+      {/* 🔹 Badge statut */}
+      <div style={{ marginTop: "10px" }}>
         <span
           style={{
             backgroundColor: data.workflow_status_badge_color || "#6b7280",
@@ -45,7 +47,10 @@ async function ReportContent({
         </span>
       </div>
 
-      <div style={{ marginTop: "20px" }}>
+      {/* 🔹 Bloc infos */}
+      <div style={{ marginTop: "25px" }}>
+        <h3>Informations workflow</h3>
+
         <p>
           <strong>Statut technique :</strong> {data.workflow_status}
         </p>
@@ -60,13 +65,21 @@ async function ReportContent({
           {data.workflow_last_changed_at}
         </p>
       </div>
+
+      {/* 🔹 Placeholder futur (important pour la suite) */}
+      <div style={{ marginTop: "40px", opacity: 0.6 }}>
+        <h3>Zone future</h3>
+        <p>→ transitions</p>
+        <p>→ historique</p>
+        <p>→ données métier</p>
+      </div>
     </div>
   );
 }
 
 export default function ReportPage({ params }: PageProps) {
   return (
-    <Suspense fallback={<div style={{ padding: "20px" }}>Chargement du rapport...</div>}>
+    <Suspense fallback={<div style={{ padding: "20px" }}>Chargement...</div>}>
       <ReportContent params={params} />
     </Suspense>
   );
