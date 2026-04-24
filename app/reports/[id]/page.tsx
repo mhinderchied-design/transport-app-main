@@ -1,16 +1,17 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ReportPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+async function ReportContent({ id }: { id: string }) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("v_report_workflow_overview_with_badges")
     .select("*")
-    .eq("rapport_id", Number(params.id))
+    .eq("rapport_id", Number(id))
     .single();
 
   if (error || !data) {
@@ -52,5 +53,15 @@ export default async function ReportPage({
         </p>
       </div>
     </div>
+  );
+}
+
+export default async function ReportPage({ params }: PageProps) {
+  const { id } = await params;
+
+  return (
+    <Suspense fallback={<div style={{ padding: "20px" }}>Chargement du rapport...</div>}>
+      <ReportContent id={id} />
+    </Suspense>
   );
 }
