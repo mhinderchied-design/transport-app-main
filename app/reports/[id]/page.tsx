@@ -81,30 +81,42 @@ function getStatusBadge(
   label: string,
   color: string | null
 ) {
-  const fallbackColor = color ?? "#6b7280";
+  if (!status) return null;
+
+  const base =
+    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium";
 
   const map: Record<string, string> = {
-    brouillon: "border-gray-500/40 bg-gray-500/10 text-gray-200",
-    saisi_chauffeur: "border-blue-500/40 bg-blue-500/10 text-blue-200",
-    en_controle_admin: "border-yellow-500/40 bg-yellow-500/10 text-yellow-200",
-    valide_admin: "border-green-500/40 bg-green-500/10 text-green-200",
+    brouillon: "border-gray-500/30 bg-gray-500/10 text-gray-300",
+    saisi_chauffeur: "border-blue-500/40 bg-blue-500/10 text-blue-300",
+    en_controle_admin: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
+    valide_admin: "border-green-500/40 bg-green-500/10 text-green-300",
     en_attente_prefacturation:
-      "border-orange-500/40 bg-orange-500/10 text-orange-200",
-    prefacture: "border-purple-500/40 bg-purple-500/10 text-purple-200",
+      "border-orange-500/40 bg-orange-500/10 text-orange-300",
+    prefacture: "border-purple-500/40 bg-purple-500/10 text-purple-300",
     valide_super_admin:
-      "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
-    verrouille: "border-red-500/40 bg-red-500/10 text-red-200",
+      "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    verrouille: "border-red-500/40 bg-red-500/10 text-red-300",
+  };
+
+  const dotColor: Record<string, string> = {
+    brouillon: "bg-gray-400",
+    saisi_chauffeur: "bg-blue-400",
+    en_controle_admin: "bg-yellow-400",
+    valide_admin: "bg-green-400",
+    en_attente_prefacturation: "bg-orange-400",
+    prefacture: "bg-purple-400",
+    valide_super_admin: "bg-emerald-400",
+    verrouille: "bg-red-400",
   };
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
-        status ? map[status] ?? "border-white/20 bg-white/10 text-white" : "border-white/20 bg-white/10 text-white"
-      }`}
-    >
+    <span className={`${base} ${map[status] ?? "border-white/20 bg-white/10 text-white"}`}>
       <span
-        className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: fallbackColor }}
+        className={`h-2 w-2 rounded-full ${
+          dotColor[status] ?? ""
+        }`}
+        style={!dotColor[status] ? { backgroundColor: color ?? "#6b7280" } : undefined}
       />
       {label}
     </span>
@@ -277,9 +289,9 @@ async function ReportPageContent({ params }: PageProps) {
 
             <p>
               <strong>Statut technique :</strong>{" "}
-              <code className="rounded bg-white/10 px-2 py-1 text-xs">
+              <span className="text-xs opacity-60">
                 {report.workflow_status ?? "—"}
-              </code>
+              </span>
             </p>
 
             <p>
