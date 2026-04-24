@@ -1,285 +1,59 @@
-import { Suspense } from "react";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import {
-  runReportWorkflowTransition,
-  type ReportTransitionState,
-} from "./actions";
-import TransitionForm from "./transition-form";
+import { createClient } from "@/utils/supabase/server";
 
-type PageProps = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-type ReportRow = {
-  id: number;
-  societe_id: number | null;
-  site_id: number | null;
-  salarie_id: number | null;
-  vehicule_id: number | null;
-  client_id: number | null;
-  site_client_id: number | null;
-  date_rapport: string | null;
-  workflow_status: string | null;
-  workflow_locked: boolean | null;
-  workflow_last_changed_at: string | null;
-  workflow_last_changed_by: string | null;
-  saisi_par_chauffeur_id: string | null;
-  valide_chauffeur_at: string | null;
-};
-
-type TransitionRow = {
-  to_status: string;
-};
-
-const ALL_WORKFLOW_STATUSES = [
-  "brouillon",
-  "saisi_chauffeur",
-  "en_controle_admin",
-  "valide_admin",
-  "en_attente_prefacturation",
-  "prefacture",
-  "valide_super_admin",
-  "verrouille",
-];
-
-function formatWorkflowLabel(status: string | null) {
-  switch (status) {
-    case "brouillon":
-      return "Brouillon";
-    case "saisi_chauffeur":
-      return "Saisi chauffeur";
-    case "en_controle_admin":
-      return "En contrôle admin";
-    case "valide_admin":
-      return "Validé admin";
-    case "en_attente_prefacturation":
-      return "En attente préfacturation";
-    case "prefacture":
-      return "Préfacturé";
-    case "valide_super_admin":
-      return "Validé super admin";
-    case "verrouille":
-      return "Verrouillé";
-    default:
-      return status ?? "Inconnu";
-  }
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-const initialTransitionState: ReportTransitionState = {
-  transition_ok: false,
-  old_status: null,
-  new_status: null,
-  transition_message: "Aucune transition lancée pour le moment.",
-};
-
-async function ReportPageContent({ params }: PageProps) {
-  await connection();
-
-  const { id } = await params;
-  const reportId = Number(id);
-
-  if (!Number.isFinite(reportId)) {
-    notFound();
-  }
-
+export default async function ReportPage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  // 🔹 Récupération du rapport AVEC badges
+  const { data, error } = await supabase
+    .from("v_report_workflow_overview_with_badges")
+    .select("*")
+    .eq("rapport_id", params.id)
+    .single();
 
-  const { data: currentRoleData, error: currentRoleError } = await supabase.rpc(
-    "app_get_current_role"
-  );
-
-  const currentRole = currentRoleData ? String(currentRoleData) : null;
-
-  const { data: report, error: reportError } = await supabase
-    .from("rapports_journaliers")
-    .select(
-      `
-        id,
-        societe_id,
-        site_id,
-        salarie_id,
-        vehicule_id,
-        client_id,
-        site_client_id,
-        date_rapport,
-        workflow_status,
-        workflow_locked,
-        workflow_last_changed_at,
-        workflow_last_changed_by,
-        saisi_par_chauffeur_id,
-        valide_chauffeur_at
-      `
-    )
-    .eq("id", reportId)
-    .maybeSingle<ReportRow>();
-
-  let allowedTransitions: string[] = [];
-
-  if (report?.workflow_status && currentRole) {
-    if (currentRole === "super_super_admin") {
-      allowedTransitions = ALL_WORKFLOW_STATUSES.filter(
-        (status) => status !== report.workflow_status
-      );
-    } else {
-      const { data: transitionsData } = await supabase
-        .from("app_report_workflow_transitions")
-        .select("to_status")
-        .eq("from_status", report.workflow_status)
-        .eq("allowed_role", currentRole)
-        .eq("is_active", true)
-        .returns<TransitionRow[]>();
-
-      allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
-    }
+  if (error || !data) {
+    return <div>Erreur chargement rapport</div>;
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-6 text-white">
-      <h1 className="mb-6 text-3xl font-bold">Rapport journalier #{reportId}</h1>
+    <div style={{ padding: "20px" }}>
+      <h1>Rapport #{data.rapport_id}</h1>
 
-      <section className="mb-6 rounded-lg border border-white/20 p-4">
-        <h2 className="mb-4 text-xl font-semibold">Contexte utilisateur</h2>
+      {/* 🔹 Badge statut */}
+      <div style={{ marginTop: "20px" }}>
+        <span
+          style={{
+            backgroundColor: data.workflow_status_badge_color || "#6b7280",
+            color: "white",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            fontWeight: "bold",
+          }}
+        >
+          {data.workflow_status_label}
+        </span>
+      </div>
 
-        <div className="space-y-2 text-sm md:text-base">
-          <p>
-            <strong>User ID :</strong> {user?.id ?? "NON CONNECTÉ"}
-          </p>
-          <p>
-            <strong>Email :</strong> {user?.email ?? "—"}
-          </p>
-          <p>
-            <strong>Erreur session :</strong> {userError?.message ?? "aucune"}
-          </p>
-          <p>
-            <strong>Rôle courant :</strong> {currentRole ?? "null"}
-          </p>
-          <p>
-            <strong>Erreur rôle :</strong> {currentRoleError?.message ?? "aucune"}
-          </p>
-        </div>
-      </section>
+      {/* 🔹 Infos techniques utiles */}
+      <div style={{ marginTop: "20px" }}>
+        <p>
+          <strong>Statut technique :</strong> {data.workflow_status}
+        </p>
 
-      <section className="mb-6 rounded-lg border border-white/20 p-4">
-        <h2 className="mb-4 text-xl font-semibold">Workflow</h2>
+        <p>
+          <strong>Verrouillé :</strong>{" "}
+          {data.workflow_locked ? "Oui" : "Non"}
+        </p>
 
-        {reportError ? (
-          <p className="text-red-300">
-            Erreur chargement rapport : {reportError.message}
-          </p>
-        ) : !report ? (
-          <p>Rapport introuvable</p>
-        ) : (
-          <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p>
-              <strong>ID :</strong> {report.id}
-            </p>
-            <p>
-              <strong>Statut :</strong> {formatWorkflowLabel(report.workflow_status)}
-            </p>
-            <p>
-              <strong>Verrouillé :</strong> {report.workflow_locked ? "Oui" : "Non"}
-            </p>
-            <p>
-              <strong>Dernière modification :</strong>{" "}
-              {formatDate(report.workflow_last_changed_at)}
-            </p>
-            <p>
-              <strong>Modifié par :</strong> {report.workflow_last_changed_by ?? "—"}
-            </p>
-            <p>
-              <strong>Saisi par chauffeur :</strong>{" "}
-              {report.saisi_par_chauffeur_id ?? "—"}
-            </p>
-            <p>
-              <strong>Validation chauffeur :</strong>{" "}
-              {formatDate(report.valide_chauffeur_at)}
-            </p>
-          </div>
-        )}
-      </section>
-
-      <section className="mb-6 rounded-lg border border-white/20 p-4">
-        <h2 className="mb-4 text-xl font-semibold">Résumé métier</h2>
-
-        {reportError ? (
-          <p className="text-red-300">
-            Impossible d’afficher le résumé métier.
-          </p>
-        ) : !report ? (
-          <p>Rapport introuvable</p>
-        ) : (
-          <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p>
-              <strong>Société :</strong> {report.societe_id ?? "—"}
-            </p>
-            <p>
-              <strong>Site :</strong> {report.site_id ?? "—"}
-            </p>
-            <p>
-              <strong>Salarié :</strong> {report.salarie_id ?? "—"}
-            </p>
-            <p>
-              <strong>Véhicule :</strong> {report.vehicule_id ?? "—"}
-            </p>
-            <p>
-              <strong>Client :</strong> {report.client_id ?? "—"}
-            </p>
-            <p>
-              <strong>Site client :</strong> {report.site_client_id ?? "—"}
-            </p>
-            <p>
-              <strong>Date rapport :</strong> {formatDate(report.date_rapport)}
-            </p>
-          </div>
-        )}
-      </section>
-
-      {report && (
-        <section className="rounded-lg border border-white/20 p-4">
-          <h2 className="mb-4 text-xl font-semibold">Actions workflow</h2>
-
-          <TransitionForm
-            reportId={report.id}
-            currentStatus={report.workflow_status}
-            isLocked={Boolean(report.workflow_locked)}
-            currentRole={currentRole}
-            allowedTransitions={allowedTransitions}
-            initialState={initialTransitionState}
-            action={runReportWorkflowTransition}
-          />
-        </section>
-      )}
-    </main>
-  );
-}
-
-export default function ReportPage(props: PageProps) {
-  return (
-    <Suspense
-      fallback={<div className="p-6 text-white">Chargement du rapport…</div>}
-    >
-      <ReportPageContent {...props} />
-    </Suspense>
+        <p>
+          <strong>Dernière modification :</strong>{" "}
+          {data.workflow_last_changed_at}
+        </p>
+      </div>
+    </div>
   );
 }
