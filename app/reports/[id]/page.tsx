@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function ReportPage({
   params,
@@ -7,11 +7,10 @@ export default async function ReportPage({
 }) {
   const supabase = await createClient();
 
-  // 🔹 Récupération du rapport AVEC badges
   const { data, error } = await supabase
     .from("v_report_workflow_overview_with_badges")
     .select("*")
-    .eq("rapport_id", params.id)
+    .eq("rapport_id", Number(params.id))
     .single();
 
   if (error || !data) {
@@ -22,7 +21,6 @@ export default async function ReportPage({
     <div style={{ padding: "20px" }}>
       <h1>Rapport #{data.rapport_id}</h1>
 
-      {/* 🔹 Badge statut */}
       <div style={{ marginTop: "20px" }}>
         <span
           style={{
@@ -38,7 +36,6 @@ export default async function ReportPage({
         </span>
       </div>
 
-      {/* 🔹 Infos techniques utiles */}
       <div style={{ marginTop: "20px" }}>
         <p>
           <strong>Statut technique :</strong> {data.workflow_status}
