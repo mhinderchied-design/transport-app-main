@@ -3,30 +3,6 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
-  function getStatusBadge(status: string | null) {
-  if (!status) return null;
-
-  const base = "px-3 py-1 rounded-full text-xs font-semibold";
-
-  const map: Record<string, string> = {
-    brouillon: "bg-gray-500/20 text-gray-300 border border-gray-500/30",
-    saisi_chauffeur: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
-    en_controle_admin: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30",
-    valide_admin: "bg-green-500/20 text-green-300 border border-green-500/30",
-    en_attente_prefacturation:
-      "bg-orange-500/20 text-orange-300 border border-orange-500/30",
-    prefacture: "bg-purple-500/20 text-purple-300 border border-purple-500/30",
-    valide_super_admin:
-      "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
-    verrouille: "bg-red-500/20 text-red-300 border border-red-500/30",
-  };
-
-  return (
-    <span className={`${base} ${map[status] || "bg-white/10 text-white"}`}>
-      {status.replaceAll("_", " ")}
-    </span>
-  );
-}
   runReportWorkflowTransition,
   type ReportTransitionState,
 } from "./actions";
@@ -98,6 +74,41 @@ function formatWorkflowLabel(status: string | null) {
     default:
       return status ?? "Inconnu";
   }
+}
+
+function getStatusBadge(
+  status: string | null,
+  label: string,
+  color: string | null
+) {
+  const fallbackColor = color ?? "#6b7280";
+
+  const map: Record<string, string> = {
+    brouillon: "border-gray-500/40 bg-gray-500/10 text-gray-200",
+    saisi_chauffeur: "border-blue-500/40 bg-blue-500/10 text-blue-200",
+    en_controle_admin: "border-yellow-500/40 bg-yellow-500/10 text-yellow-200",
+    valide_admin: "border-green-500/40 bg-green-500/10 text-green-200",
+    en_attente_prefacturation:
+      "border-orange-500/40 bg-orange-500/10 text-orange-200",
+    prefacture: "border-purple-500/40 bg-purple-500/10 text-purple-200",
+    valide_super_admin:
+      "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+    verrouille: "border-red-500/40 bg-red-500/10 text-red-200",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+        status ? map[status] ?? "border-white/20 bg-white/10 text-white" : "border-white/20 bg-white/10 text-white"
+      }`}
+    >
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: fallbackColor }}
+      />
+      {label}
+    </span>
+  );
 }
 
 function formatDate(value: string | null) {
@@ -257,22 +268,18 @@ async function ReportPageContent({ params }: PageProps) {
 
             <p>
               <strong>Statut :</strong>{" "}
-              <span
-                style={{
-                  backgroundColor: workflowBadgeColor,
-                  color: "white",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                }}
-              >
-                {workflowLabel}
-              </span>
+              {getStatusBadge(
+                report.workflow_status,
+                workflowLabel,
+                workflowBadgeColor
+              )}
             </p>
 
             <p>
-              <strong>Statut technique :</strong> {report.workflow_status ?? "—"}
+              <strong>Statut technique :</strong>{" "}
+              <code className="rounded bg-white/10 px-2 py-1 text-xs">
+                {report.workflow_status ?? "—"}
+              </code>
             </p>
 
             <p>
@@ -344,9 +351,7 @@ async function ReportPageContent({ params }: PageProps) {
       {report && (
         <section
           className={`rounded-lg border p-4 ${
-            isLocked
-              ? "border-red-400 bg-red-950/20"
-              : "border-white/20"
+            isLocked ? "border-red-400 bg-red-950/20" : "border-white/20"
           }`}
         >
           <h2 className="mb-4 text-xl font-semibold">Actions workflow</h2>
