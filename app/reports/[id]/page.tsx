@@ -3,6 +3,30 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  function getStatusBadge(status: string | null) {
+  if (!status) return null;
+
+  const base = "px-3 py-1 rounded-full text-xs font-semibold";
+
+  const map: Record<string, string> = {
+    brouillon: "bg-gray-500/20 text-gray-300 border border-gray-500/30",
+    saisi_chauffeur: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+    en_controle_admin: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30",
+    valide_admin: "bg-green-500/20 text-green-300 border border-green-500/30",
+    en_attente_prefacturation:
+      "bg-orange-500/20 text-orange-300 border border-orange-500/30",
+    prefacture: "bg-purple-500/20 text-purple-300 border border-purple-500/30",
+    valide_super_admin:
+      "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
+    verrouille: "bg-red-500/20 text-red-300 border border-red-500/30",
+  };
+
+  return (
+    <span className={`${base} ${map[status] || "bg-white/10 text-white"}`}>
+      {status.replaceAll("_", " ")}
+    </span>
+  );
+}
   runReportWorkflowTransition,
   type ReportTransitionState,
 } from "./actions";
