@@ -222,15 +222,13 @@ async function ReportPageContent({ params }: PageProps) {
     .eq("id", reportId)
     .maybeSingle<ReportRow>();
 
-  const { data: workflowLogs, error: workflowLogsError } = await supabase
+  const { data: workflowLogsRaw, error: workflowLogsError } = await supabase
     .from("app_report_workflow_log")
     .select(
       `
         id,
         old_status,
-        old_status_ref:report_workflow_statuses!app_report_workflow_log_old_status_fkey(label),
         new_status,
-        new_status_ref:report_workflow_statuses!app_report_workflow_log_new_status_fkey(label),
         changed_role,
         comment_text,
         metadata,
@@ -240,13 +238,25 @@ async function ReportPageContent({ params }: PageProps) {
     .eq("rapport_id", reportId)
     .order("created_at", { ascending: false });
 
+  const { data: statusesData } = await supabase
+    .from("report_workflow_statuses")
+    .select("code, label");
+
+  const statusMap: Record<string, string> = {};
+
+  statusesData?.forEach((status) => {
+    statusMap[status.code] = status.label;
+  });
+
   const formattedWorkflowLogs: WorkflowLogRow[] =
-    workflowLogs?.map((log: any) => ({
+    workflowLogsRaw?.map((log) => ({
       id: log.id,
       old_status: log.old_status,
-      old_status_label: log.old_status_ref?.label ?? null,
+      old_status_label:
+        statusMap[log.old_status ?? ""] ?? formatWorkflowLabel(log.old_status),
       new_status: log.new_status,
-      new_status_label: log.new_status_ref?.label ?? null,
+      new_status_label:
+        statusMap[log.new_status ?? ""] ?? formatWorkflowLabel(log.new_status),
       changed_role: log.changed_role,
       comment_text: log.comment_text,
       metadata: log.metadata,
@@ -476,9 +486,7 @@ async function ReportPageContent({ params }: PageProps) {
                     <p className="md:col-span-2">
                       <strong>Metadata :</strong>{" "}
                       <span className="text-xs text-white/50">
-                        {log.metadata
-                          ? JSON.stringify(log.metadata)
-                          : "—"}
+                        {log.metadata ? JSON.stringify(log.metadata) : "—"}
                       </span>
                     </p>
                   </div>
