@@ -75,7 +75,6 @@ function formatWorkflowLabel(status: string | null) {
       return status ?? "Inconnu";
   }
 }
-
 function getStatusBadge(
   status: string | null,
   label: string,
@@ -99,15 +98,15 @@ function getStatusBadge(
     verrouille: "border-red-500/50 bg-red-500/15 text-red-200",
   };
 
-  const dotColor: Record<string, string> = {
-    brouillon: "bg-gray-300",
-    saisi_chauffeur: "bg-blue-300",
-    en_controle_admin: "bg-yellow-300",
-    valide_admin: "bg-green-300",
-    en_attente_prefacturation: "bg-orange-300",
-    prefacture: "bg-purple-300",
-    valide_super_admin: "bg-emerald-300",
-    verrouille: "bg-red-300",
+  const iconStyle: Record<string, string> = {
+    brouillon: "bg-gray-300 text-gray-900",
+    saisi_chauffeur: "bg-blue-300 text-blue-950",
+    en_controle_admin: "bg-yellow-300 text-yellow-950",
+    valide_admin: "bg-green-300 text-green-950",
+    en_attente_prefacturation: "bg-orange-300 text-orange-950",
+    prefacture: "bg-purple-300 text-purple-950",
+    valide_super_admin: "bg-emerald-300 text-emerald-950",
+    verrouille: "bg-red-300 text-red-950",
   };
 
   const icon: Record<string, string> = {
@@ -128,13 +127,18 @@ function getStatusBadge(
       }`}
     >
       <span
-        className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-black ${
-          dotColor[status] ?? ""
+        className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+          iconStyle[status] ?? "bg-white/40 text-black"
         }`}
-        style={!dotColor[status] ? { backgroundColor: color ?? "#6b7280" } : undefined}
+        style={
+          !iconStyle[status]
+            ? { backgroundColor: color ?? "#6b7280" }
+            : undefined
+        }
       >
         {icon[status] ?? "•"}
       </span>
+
       {label}
     </span>
   );
