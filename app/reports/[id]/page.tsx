@@ -75,7 +75,6 @@ function formatWorkflowLabel(status: string | null) {
       return status ?? "Inconnu";
   }
 }
-
 function getStatusBadge(
   status: string | null,
   label: string,
@@ -344,18 +343,6 @@ async function ReportPageContent({ params }: PageProps) {
             </p>
           </div>
         )}
-      </section>
-
-      <section className="mb-6 rounded-lg border border-white/20 p-4">
-        <h2 className="mb-4 text-xl font-semibold">Test badges</h2>
-
-        <div className="flex flex-wrap gap-3">
-          {ALL_WORKFLOW_STATUSES.map((status) => (
-            <div key={status}>
-              {getStatusBadge(status, formatWorkflowLabel(status), "#6b7280")}
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="mb-6 rounded-lg border border-white/20 p-4">
