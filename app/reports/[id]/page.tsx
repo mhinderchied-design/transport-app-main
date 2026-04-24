@@ -155,7 +155,7 @@ async function ReportPageContent({ params }: PageProps) {
 
   let allowedTransitions: string[] = [];
 
-  if (report?.workflow_status && currentRole) {
+  if (report?.workflow_status && currentRole && !report.workflow_locked) {
     if (currentRole === "super_super_admin") {
       allowedTransitions = ALL_WORKFLOW_STATUSES.filter(
         (status) => status !== report.workflow_status
@@ -178,9 +178,21 @@ async function ReportPageContent({ params }: PageProps) {
 
   const workflowBadgeColor = statusBadge?.badge_color ?? "#6b7280";
 
+  const isLocked = Boolean(report?.workflow_locked);
+
   return (
     <main className="mx-auto max-w-5xl p-6 text-white">
       <h1 className="mb-6 text-3xl font-bold">Rapport journalier #{reportId}</h1>
+
+      {isLocked && (
+        <section className="mb-6 rounded-lg border border-red-400 bg-red-950/40 p-4 text-red-100">
+          <h2 className="mb-2 text-xl font-semibold">Rapport verrouillé</h2>
+          <p>
+            Ce rapport est verrouillé. Les transitions workflow sont désactivées
+            tant que le verrouillage est actif.
+          </p>
+        </section>
+      )}
 
       <section className="mb-6 rounded-lg border border-white/20 p-4">
         <h2 className="mb-4 text-xl font-semibold">Contexte utilisateur</h2>
@@ -241,7 +253,9 @@ async function ReportPageContent({ params }: PageProps) {
 
             <p>
               <strong>Verrouillé :</strong>{" "}
-              {report.workflow_locked ? "Oui" : "Non"}
+              <span className={isLocked ? "text-red-300" : "text-green-300"}>
+                {isLocked ? "Oui" : "Non"}
+              </span>
             </p>
 
             <p>
@@ -304,18 +318,34 @@ async function ReportPageContent({ params }: PageProps) {
       </section>
 
       {report && (
-        <section className="rounded-lg border border-white/20 p-4">
+        <section
+          className={`rounded-lg border p-4 ${
+            isLocked
+              ? "border-red-400 bg-red-950/20"
+              : "border-white/20"
+          }`}
+        >
           <h2 className="mb-4 text-xl font-semibold">Actions workflow</h2>
 
-          <TransitionForm
-            reportId={report.id}
-            currentStatus={report.workflow_status}
-            isLocked={Boolean(report.workflow_locked)}
-            currentRole={currentRole}
-            allowedTransitions={allowedTransitions}
-            initialState={initialTransitionState}
-            action={runReportWorkflowTransition}
-          />
+          {isLocked ? (
+            <div className="rounded-md border border-red-400 bg-red-950/40 p-4 text-red-100">
+              <p className="font-semibold">Actions désactivées</p>
+              <p>
+                Ce rapport est verrouillé. Aucune transition ne peut être
+                exécutée tant que le verrouillage est actif.
+              </p>
+            </div>
+          ) : (
+            <TransitionForm
+              reportId={report.id}
+              currentStatus={report.workflow_status}
+              isLocked={isLocked}
+              currentRole={currentRole}
+              allowedTransitions={allowedTransitions}
+              initialState={initialTransitionState}
+              action={runReportWorkflowTransition}
+            />
+          )}
         </section>
       )}
     </main>
