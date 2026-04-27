@@ -21,6 +21,13 @@ const ALL_WORKFLOW_STATUSES = [
   "verrouille",
 ];
 
+type ApplyWorkflowTransitionResult = {
+  success?: boolean;
+  old_status?: string | null;
+  new_status?: string | null;
+  message?: string | null;
+};
+
 function getFormValue(formData: FormData, keys: string[]) {
   for (const key of keys) {
     const value = formData.get(key);
@@ -75,6 +82,15 @@ export async function runReportWorkflowTransition(
     };
   }
 
+  if (!ALL_WORKFLOW_STATUSES.includes(targetStatus)) {
+    return {
+      transition_ok: false,
+      old_status: null,
+      new_status: null,
+      transition_message: "Statut cible inconnu.",
+    };
+  }
+
   const { data: report, error: reportError } = await supabase
     .from("rapports_journaliers")
     .select(
@@ -96,13 +112,10 @@ export async function runReportWorkflowTransition(
       transition_ok: false,
       old_status: null,
       new_status: null,
-      transition_message:
-        reportError?.message ?? "Rapport introuvable.",
+      transition_message: reportError?.message ?? "Rapport introuvable.",
     };
   }
 
-  // 🔒 VERROUILLAGE BACKEND
-  // Si le rapport est verrouillé, aucune transition ne passe.
   if (report.workflow_locked) {
     return {
       transition_ok: false,
@@ -112,110 +125,46 @@ export async function runReportWorkflowTransition(
     };
   }
 
-  const oldStatus = report.workflow_status;
-
-  if (oldStatus === targetStatus) {
+  if (report.workflow_status === targetStatus) {
     return {
       transition_ok: false,
-      old_status: oldStatus,
-      new_status: oldStatus,
+      old_status: report.workflow_status,
+      new_status: report.workflow_status,
       transition_message: "Le statut cible est identique au statut actuel.",
     };
   }
 
-  const { data: currentRoleData, error: currentRoleError } = await supabase.rpc(
-    "app_get_current_role"
-  );
+  const { data, error } = await supabase.rpc("app_apply_workflow_transition", {
+    p_rapport_id: reportId,
+    p_to_status: targetStatus,
+    p_comment: comment,
+  });
 
-  if (currentRoleError) {
+  if (error) {
     return {
       transition_ok: false,
-      old_status: oldStatus,
-      new_status: oldStatus,
-      transition_message: `Erreur récupération rôle : ${currentRoleError.message}`,
+      old_status: report.workflow_status,
+      new_status: report.workflow_status,
+      transition_message: `Erreur transition sécurisée : ${error.message}`,
     };
   }
 
-  const currentRole = currentRoleData ? String(currentRoleData) : null;
+  const result = data as ApplyWorkflowTransitionResult | null;
 
-  if (!currentRole) {
-    return {
-      transition_ok: false,
-      old_status: oldStatus,
-      new_status: oldStatus,
-      transition_message: "Aucun rôle courant trouvé.",
-    };
+  const transitionOk = Boolean(result?.success);
+  const oldStatus = result?.old_status ?? report.workflow_status;
+  const newStatus = result?.new_status ?? oldStatus;
+
+  if (transitionOk) {
+    revalidatePath(`/reports/${reportId}`);
   }
-
-  let transitionAllowed = false;
-
-  if (currentRole === "super_super_admin") {
-    transitionAllowed =
-      ALL_WORKFLOW_STATUSES.includes(targetStatus) && targetStatus !== oldStatus;
-  } else {
-    const { data: transitionData, error: transitionError } = await supabase
-      .from("app_report_workflow_transitions")
-      .select("to_status")
-      .eq("from_status", oldStatus)
-      .eq("to_status", targetStatus)
-      .eq("allowed_role", currentRole)
-      .eq("is_active", true)
-      .maybeSingle<{ to_status: string }>();
-
-    if (transitionError) {
-      return {
-        transition_ok: false,
-        old_status: oldStatus,
-        new_status: oldStatus,
-        transition_message: `Erreur vérification transition : ${transitionError.message}`,
-      };
-    }
-
-    transitionAllowed = Boolean(transitionData);
-  }
-
-  if (!transitionAllowed) {
-    return {
-      transition_ok: false,
-      old_status: oldStatus,
-      new_status: oldStatus,
-      transition_message: "Transition non autorisée pour ce rôle.",
-    };
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { error: updateError } = await supabase
-    .from("rapports_journaliers")
-    .update({
-      workflow_status: targetStatus,
-      workflow_last_changed_at: new Date().toISOString(),
-      workflow_last_changed_by: user?.id ?? null,
-    })
-    .eq("id", reportId);
-
-  if (updateError) {
-    return {
-      transition_ok: false,
-      old_status: oldStatus,
-      new_status: oldStatus,
-      transition_message: `Erreur transition : ${updateError.message}`,
-    };
-  }
-
-  revalidatePath(`/reports/${reportId}`);
 
   return {
-    transition_ok: true,
+    transition_ok: transitionOk,
     old_status: oldStatus,
-    new_status: targetStatus,
+    new_status: newStatus,
     transition_message:
-      currentRole === "super_super_admin"
-        ? "transition effectuée (override super_super_admin)"
-        : comment
-          ? `transition effectuée : ${comment}`
-          : "transition effectuée",
+      result?.message ??
+      (transitionOk ? "Transition effectuée." : "Transition refusée."),
   };
 }
