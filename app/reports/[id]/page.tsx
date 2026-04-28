@@ -59,6 +59,7 @@ const ALL_WORKFLOW_STATUSES = [
   "brouillon",
   "saisi_chauffeur",
   "en_controle_admin",
+  "rejete",
   "valide_admin",
   "en_attente_prefacturation",
   "prefacture",
@@ -74,6 +75,8 @@ function formatWorkflowLabel(status: string | null) {
       return "Saisi chauffeur";
     case "en_controle_admin":
       return "En contrôle admin";
+    case "rejete":
+      return "Rejeté";
     case "valide_admin":
       return "Validé admin";
     case "en_attente_prefacturation":
@@ -103,6 +106,7 @@ function getStatusBadge(
     brouillon: "border-gray-500/40 bg-gray-500/15 text-gray-200",
     saisi_chauffeur: "border-blue-500/50 bg-blue-500/15 text-blue-200",
     en_controle_admin: "border-yellow-500/50 bg-yellow-500/15 text-yellow-200",
+    rejete: "border-red-500/50 bg-red-500/15 text-red-200",
     valide_admin: "border-green-500/50 bg-green-500/15 text-green-200",
     en_attente_prefacturation:
       "border-orange-500/50 bg-orange-500/15 text-orange-200",
@@ -116,6 +120,7 @@ function getStatusBadge(
     brouillon: "bg-gray-300 text-gray-900",
     saisi_chauffeur: "bg-blue-300 text-blue-950",
     en_controle_admin: "bg-yellow-300 text-yellow-950",
+    rejete: "bg-red-300 text-red-950",
     valide_admin: "bg-green-300 text-green-950",
     en_attente_prefacturation: "bg-orange-300 text-orange-950",
     prefacture: "bg-purple-300 text-purple-950",
@@ -127,6 +132,7 @@ function getStatusBadge(
     brouillon: "•",
     saisi_chauffeur: "●",
     en_controle_admin: "⏳",
+    rejete: "✕",
     valide_admin: "✓",
     en_attente_prefacturation: "⌛",
     prefacture: "◆",
@@ -163,6 +169,7 @@ function getTimelineDotClass(status: string | null) {
     brouillon: "bg-gray-300 ring-gray-400/30",
     saisi_chauffeur: "bg-blue-300 ring-blue-400/30",
     en_controle_admin: "bg-yellow-300 ring-yellow-400/30",
+    rejete: "bg-red-300 ring-red-400/30",
     valide_admin: "bg-green-300 ring-green-400/30",
     en_attente_prefacturation: "bg-orange-300 ring-orange-400/30",
     prefacture: "bg-purple-300 ring-purple-400/30",
