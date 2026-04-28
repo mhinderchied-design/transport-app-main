@@ -16,6 +16,31 @@ type Props = {
   ) => Promise<ReportTransitionState>;
 };
 
+function formatWorkflowLabel(status: string | null) {
+  switch (status) {
+    case "brouillon":
+      return "Brouillon";
+    case "saisi_chauffeur":
+      return "Saisi chauffeur";
+    case "en_controle_admin":
+      return "En contrôle admin";
+    case "rejete":
+      return "Rejeté";
+    case "valide_admin":
+      return "Validé admin";
+    case "en_attente_prefacturation":
+      return "En attente préfacturation";
+    case "prefacture":
+      return "Préfacturé";
+    case "valide_super_admin":
+      return "Validé super admin";
+    case "verrouille":
+      return "Verrouillé";
+    default:
+      return status ?? "—";
+  }
+}
+
 export default function TransitionForm({
   reportId,
   currentStatus,
@@ -44,7 +69,8 @@ export default function TransitionForm({
 
       <div>
         <p className="text-sm opacity-70">
-          Statut actuel : <strong>{currentStatus ?? "—"}</strong>
+          Statut actuel :{" "}
+          <strong>{formatWorkflowLabel(currentStatus)}</strong>
         </p>
         <p className="text-sm opacity-70">
           Rôle : <strong>{currentRole ?? "—"}</strong>
@@ -59,27 +85,27 @@ export default function TransitionForm({
       )}
 
       <div>
-        <label className="block text-sm mb-1">Statut cible</label>
+        <label className="mb-1 block text-sm">Statut cible</label>
         <select
           name="to_status"
-          className="w-full rounded bg-black/30 border border-white/20 p-2"
+          className="w-full rounded border border-white/20 bg-black/30 p-2"
           required
         >
           <option value="">Choisir un statut</option>
           {allowedTransitions.map((status) => (
             <option key={status} value={status}>
-              {status}
+              {formatWorkflowLabel(status)}
             </option>
           ))}
         </select>
       </div>
 
       <div>
-        <label className="block text-sm mb-1">Commentaire</label>
+        <label className="mb-1 block text-sm">Commentaire</label>
         <textarea
           name="comment"
           placeholder="Commentaire de transition"
-          className="w-full rounded bg-black/30 border border-white/20 p-2"
+          className="w-full rounded border border-white/20 bg-black/30 p-2"
         />
       </div>
 
@@ -93,8 +119,18 @@ export default function TransitionForm({
       <div className="mt-4 text-sm opacity-80">
         <p>Résultat : {state.transition_message}</p>
         <p>transition_ok : {String(state.transition_ok)}</p>
-        <p>old_status : {state.old_status ?? "null"}</p>
-        <p>new_status : {state.new_status ?? "null"}</p>
+        <p>
+          old_status :{" "}
+          {state.old_status
+            ? `${formatWorkflowLabel(state.old_status)} (${state.old_status})`
+            : "null"}
+        </p>
+        <p>
+          new_status :{" "}
+          {state.new_status
+            ? `${formatWorkflowLabel(state.new_status)} (${state.new_status})`
+            : "null"}
+        </p>
       </div>
     </form>
   );
