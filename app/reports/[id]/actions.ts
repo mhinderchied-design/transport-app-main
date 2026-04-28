@@ -19,6 +19,7 @@ const ALL_WORKFLOW_STATUSES = [
   "brouillon",
   "saisi_chauffeur",
   "en_controle_admin",
+  "rejete"
   "valide_admin",
   "en_attente_prefacturation",
   "prefacture",
