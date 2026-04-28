@@ -10,6 +10,11 @@ export type ReportTransitionState = {
   transition_message: string;
 };
 
+export type ReportUnlockState = {
+  success: boolean;
+  message: string;
+};
+
 const ALL_WORKFLOW_STATUSES = [
   "brouillon",
   "saisi_chauffeur",
@@ -26,6 +31,12 @@ type ApplyWorkflowTransitionResult = {
   old_status?: string | null;
   new_status?: string | null;
   message?: string | null;
+};
+
+type UnlockReportResult = {
+  success?: boolean;
+  message?: string | null;
+  already_unlocked?: boolean;
 };
 
 function getFormValue(formData: FormData, keys: string[]) {
@@ -166,5 +177,71 @@ export async function runReportWorkflowTransition(
     transition_message:
       result?.message ??
       (transitionOk ? "Transition effectuée." : "Transition refusée."),
+  };
+}
+
+export async function unlockReport(
+  formData: FormData
+): Promise<ReportUnlockState> {
+  const supabase = await createClient();
+
+  const reportIdValue = getFormValue(formData, [
+    "reportId",
+    "report_id",
+    "rapportId",
+    "rapport_id",
+  ]);
+
+  const comment =
+    getFormValue(formData, ["comment", "unlock_comment"]) ??
+    "Déverrouillage manuel par super_super_admin";
+
+  const reportId = Number(reportIdValue);
+
+  if (!Number.isFinite(reportId)) {
+    return {
+      success: false,
+      message: "ID rapport invalide.",
+    };
+  }
+
+  const { data: currentRoleData, error: roleError } = await supabase.rpc(
+    "app_get_current_role"
+  );
+
+  const currentRole = currentRoleData ? String(currentRoleData) : null;
+
+  if (roleError || currentRole !== "super_super_admin") {
+    return {
+      success: false,
+      message: "Déverrouillage non autorisé.",
+    };
+  }
+
+  const { data, error } = await supabase.rpc("app_unlock_report", {
+    p_report_id: reportId,
+    p_comment: comment,
+  });
+
+  if (error) {
+    return {
+      success: false,
+      message: `Erreur déverrouillage : ${error.message}`,
+    };
+  }
+
+  const result = data as UnlockReportResult | null;
+
+  const success = Boolean(result?.success);
+
+  if (success) {
+    revalidatePath(`/reports/${reportId}`);
+  }
+
+  return {
+    success,
+    message:
+      result?.message ??
+      (success ? "Rapport déverrouillé." : "Déverrouillage refusé."),
   };
 }
