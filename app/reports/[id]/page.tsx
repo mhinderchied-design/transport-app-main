@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   runReportWorkflowTransition,
+  unlockReport,
   type ReportTransitionState,
 } from "./actions";
 import TransitionForm from "./transition-form";
@@ -450,100 +451,104 @@ async function ReportPageContent({ params }: PageProps) {
         )}
       </section>
 
-      <section className="mb-6 rounded-xl border border-white/20 bg-white/[0.02] p-4 shadow-sm">
-        <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">
-              Historique des transitions
-            </h2>
-            <p className="mt-1 text-sm text-white/50">
-              Traçabilité complète des changements de statut du rapport.
-            </p>
+      <details className="mb-6 rounded-xl border border-white/20 bg-white/[0.02] p-4 shadow-sm">
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">
+                Historique des transitions
+              </h2>
+              <p className="mt-1 text-sm text-white/50">
+                Cliquer pour ouvrir ou fermer la timeline complète.
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
+              {formattedWorkflowLogs.length} événement
+              {formattedWorkflowLogs.length > 1 ? "s" : ""}
+            </span>
           </div>
+        </summary>
 
-          <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
-            {formattedWorkflowLogs.length} événement
-            {formattedWorkflowLogs.length > 1 ? "s" : ""}
-          </span>
-        </div>
+        <div className="mt-5">
+          {workflowLogsError ? (
+            <p className="rounded-lg border border-red-400/40 bg-red-950/30 p-3 text-sm text-red-200">
+              Erreur chargement historique : {workflowLogsError.message}
+            </p>
+          ) : formattedWorkflowLogs.length === 0 ? (
+            <p className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-white/60">
+              Aucun historique workflow pour ce rapport.
+            </p>
+          ) : (
+            <div className="relative pl-7">
+              <div className="absolute bottom-3 left-[9px] top-3 w-px bg-gradient-to-b from-white/5 via-white/20 to-white/5" />
 
-        {workflowLogsError ? (
-          <p className="rounded-lg border border-red-400/40 bg-red-950/30 p-3 text-sm text-red-200">
-            Erreur chargement historique : {workflowLogsError.message}
-          </p>
-        ) : formattedWorkflowLogs.length === 0 ? (
-          <p className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-white/60">
-            Aucun historique workflow pour ce rapport.
-          </p>
-        ) : (
-          <div className="relative pl-7">
-            <div className="absolute bottom-3 left-[9px] top-3 w-px bg-gradient-to-b from-white/5 via-white/20 to-white/5" />
+              {formattedWorkflowLogs.map((log) => {
+                const oldLabel =
+                  log.old_status_label ?? formatWorkflowLabel(log.old_status);
+                const newLabel =
+                  log.new_status_label ?? formatWorkflowLabel(log.new_status);
 
-            {formattedWorkflowLogs.map((log) => {
-              const oldLabel =
-                log.old_status_label ?? formatWorkflowLabel(log.old_status);
-              const newLabel =
-                log.new_status_label ?? formatWorkflowLabel(log.new_status);
+                return (
+                  <div key={log.id} className="group relative mb-5 last:mb-0">
+                    <div
+                      className={`absolute left-[-25px] top-5 h-4 w-4 rounded-full ring-4 transition-all duration-200 group-hover:scale-125 ${getTimelineDotClass(
+                        log.new_status
+                      )}`}
+                    />
 
-              return (
-                <div key={log.id} className="group relative mb-5 last:mb-0">
-                  <div
-                    className={`absolute left-[-25px] top-5 h-4 w-4 rounded-full ring-4 transition-all duration-200 group-hover:scale-125 ${getTimelineDotClass(
-                      log.new_status
-                    )}`}
-                  />
+                    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 shadow-sm transition-all duration-200 ease-out group-hover:-translate-y-0.5 group-hover:border-white/25 group-hover:bg-white/[0.07] group-hover:shadow-md">
+                      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {getStatusBadge(log.old_status, oldLabel, null)}
+                          <span className="text-sm text-white/35">→</span>
+                          {getStatusBadge(log.new_status, newLabel, null)}
+                        </div>
 
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 shadow-sm transition-all duration-200 ease-out group-hover:-translate-y-0.5 group-hover:border-white/25 group-hover:bg-white/[0.07] group-hover:shadow-md">
-                    <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {getStatusBadge(log.old_status, oldLabel, null)}
-                        <span className="text-sm text-white/35">→</span>
-                        {getStatusBadge(log.new_status, newLabel, null)}
+                        <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-xs text-white/50">
+                          {formatDate(log.created_at)}
+                        </span>
                       </div>
 
-                      <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-xs text-white/50">
-                        {formatDate(log.created_at)}
-                      </span>
-                    </div>
+                      <div className="grid gap-3 text-sm md:grid-cols-2">
+                        <div className="rounded-lg border border-white/5 bg-black/10 p-3">
+                          <p className="mb-1 text-xs uppercase tracking-wide text-white/35">
+                            Rôle
+                          </p>
+                          <p className="font-medium text-white/85">
+                            {log.changed_role ?? "—"}
+                          </p>
+                        </div>
 
-                    <div className="grid gap-3 text-sm md:grid-cols-2">
-                      <div className="rounded-lg border border-white/5 bg-black/10 p-3">
-                        <p className="mb-1 text-xs uppercase tracking-wide text-white/35">
-                          Rôle
-                        </p>
-                        <p className="font-medium text-white/85">
-                          {log.changed_role ?? "—"}
-                        </p>
+                        <div className="rounded-lg border border-white/5 bg-black/10 p-3">
+                          <p className="mb-1 text-xs uppercase tracking-wide text-white/35">
+                            Commentaire
+                          </p>
+                          <p className="font-medium text-white/85">
+                            {log.comment_text?.trim() ? log.comment_text : "—"}
+                          </p>
+                        </div>
+
+                        {log.metadata &&
+                          Object.keys(log.metadata).length > 0 && (
+                            <div className="rounded-lg border border-white/5 bg-black/10 p-3 md:col-span-2">
+                              <p className="mb-1 text-xs uppercase tracking-wide text-white/35">
+                                Metadata
+                              </p>
+                              <p className="font-mono text-xs text-white/60">
+                                {JSON.stringify(log.metadata)}
+                              </p>
+                            </div>
+                          )}
                       </div>
-
-                      <div className="rounded-lg border border-white/5 bg-black/10 p-3">
-                        <p className="mb-1 text-xs uppercase tracking-wide text-white/35">
-                          Commentaire
-                        </p>
-                        <p className="font-medium text-white/85">
-                          {log.comment_text?.trim() ? log.comment_text : "—"}
-                        </p>
-                      </div>
-
-                      {log.metadata &&
-                        Object.keys(log.metadata).length > 0 && (
-                          <div className="rounded-lg border border-white/5 bg-black/10 p-3 md:col-span-2">
-                            <p className="mb-1 text-xs uppercase tracking-wide text-white/35">
-                              Metadata
-                            </p>
-                            <p className="font-mono text-xs text-white/60">
-                              {JSON.stringify(log.metadata)}
-                            </p>
-                          </div>
-                        )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </details>
 
       {report && (
         <section
@@ -554,12 +559,41 @@ async function ReportPageContent({ params }: PageProps) {
           <h2 className="mb-4 text-xl font-semibold">Actions workflow</h2>
 
           {isLocked ? (
-            <div className="rounded-md border border-red-400 bg-red-950/40 p-4 text-red-100">
-              <p className="font-semibold">Actions désactivées</p>
-              <p>
-                Ce rapport est verrouillé. Aucune transition ne peut être
-                exécutée tant que le verrouillage est actif.
-              </p>
+            <div className="space-y-4 rounded-md border border-red-400 bg-red-950/40 p-4 text-red-100">
+              <div>
+                <p className="font-semibold">Actions désactivées</p>
+                <p>
+                  Ce rapport est verrouillé. Aucune transition ne peut être
+                  exécutée tant que le verrouillage est actif.
+                </p>
+              </div>
+
+              {currentRole === "super_super_admin" && (
+                <form
+                  action={unlockReport}
+                  className="rounded-lg border border-yellow-400/50 bg-yellow-950/30 p-4"
+                >
+                  <input type="hidden" name="reportId" value={report.id} />
+
+                  <label className="mb-2 block text-sm font-semibold text-yellow-100">
+                    Commentaire de déverrouillage
+                  </label>
+
+                  <textarea
+                    name="unlock_comment"
+                    className="mb-3 min-h-20 w-full rounded-md border border-white/20 bg-black/30 p-3 text-sm text-white"
+                    placeholder="Exemple : correction nécessaire avant validation finale"
+                    defaultValue="Déverrouillage manuel par super_super_admin"
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-md border border-yellow-300 bg-yellow-400 px-4 py-2 text-sm font-semibold text-black transition hover:bg-yellow-300"
+                  >
+                    Déverrouiller le rapport
+                  </button>
+                </form>
+              )}
             </div>
           ) : (
             <TransitionForm
