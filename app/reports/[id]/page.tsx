@@ -578,6 +578,7 @@ function canSeeValidationNotice(
           </div>
         )}
       </section>
+      {report &&
       {latestWorkflowReject &&
 canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) &&
 (
