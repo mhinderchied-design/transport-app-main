@@ -18,6 +18,9 @@ type PageProps = {
 
 type ReportRow = {
   id: number;
+  chauffeur_status: string | null;
+  admin_status: string | null;
+  admin_societe_status: string | null;
   societe_id: number | null;
   site_id: number | null;
   salarie_id: number | null;
@@ -242,6 +245,9 @@ async function ReportPageContent({ params }: PageProps) {
         site_client_id,
         date_rapport,
         workflow_status,
+        chauffeur_status,
+        admin_status,
+        admin_societe_status,
         workflow_locked,
         workflow_last_changed_at,
         workflow_last_changed_by,
