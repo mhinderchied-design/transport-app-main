@@ -534,6 +534,20 @@ function canSeeValidationNotice(
                 {report.workflow_status ?? "—"}
               </span>
             </p>
+            <p>
+  <strong>Statut chauffeur :</strong>{" "}
+  {report.chauffeur_status ?? "—"}
+</p>
+
+<p>
+  <strong>Statut admin :</strong>{" "}
+  {report.admin_status ?? "—"}
+</p>
+
+<p>
+  <strong>Statut admin société :</strong>{" "}
+  {report.admin_societe_status ?? "—"}
+</p>
 
             <p>
               <strong>Verrouillé :</strong>{" "}
@@ -565,7 +579,12 @@ function canSeeValidationNotice(
         )}
       </section>
       {latestWorkflowReject &&
-  canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) && (
+canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) &&
+(
+  (currentRole === "chauffeur" && report.chauffeur_status === "refuse") ||
+  (currentRole === "admin" && report.admin_status === "refuse") ||
+  (currentRole === "admin_societe" && report.admin_societe_status === "refuse")
+) && (
     <section className="mb-6 rounded-lg border border-red-400 bg-red-950/30 p-4 text-red-100">
       <details>
         <summary className="cursor-pointer list-none">
