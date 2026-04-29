@@ -22,5 +22,5 @@ export async function login(formData: FormData) {
     redirect(`/auth/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/protected");
+  redirect("/reports/2");
 }
