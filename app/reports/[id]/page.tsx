@@ -331,6 +331,73 @@ async function ReportPageContent({ params }: PageProps) {
   const workflowBadgeColor = statusBadge?.badge_color ?? "#6b7280";
 
   const isLocked = Boolean(report?.workflow_locked);
+  const latestWorkflowReject = formattedWorkflowLogs.find((log) => {
+  if (!report?.workflow_status) return false;
+
+  const isCurrentReturn = log.new_status === report.workflow_status;
+
+  const adminRejectedChauffeur =
+    log.changed_role === "admin" &&
+    log.old_status === "saisi_chauffeur" &&
+    log.new_status === "brouillon";
+
+  const adminSocieteRejectedAdmin =
+    log.changed_role === "admin_societe" &&
+    log.old_status === "valide_admin" &&
+    log.new_status === "saisi_chauffeur";
+
+  const superAdminRejectedAdminSociete =
+    log.changed_role === "super_super_admin" &&
+    log.old_status === "en_attente_prefacturation" &&
+    log.new_status === "valide_admin";
+
+  return (
+    isCurrentReturn &&
+    (
+      adminRejectedChauffeur ||
+      adminSocieteRejectedAdmin ||
+      superAdminRejectedAdminSociete
+    )
+  );
+});
+
+function getRejectAuthorLabel(role: string | null) {
+  switch (role) {
+    case "admin":
+      return "le chef d’équipe";
+    case "admin_societe":
+      return "Elias";
+    case "super_super_admin":
+      return "Mickael";
+    default:
+      return "un responsable";
+  }
+}
+
+function canSeeRejectNotice(
+  currentRole: string | null,
+  rejectRole: string | null
+) {
+  if (!currentRole || !rejectRole) return false;
+
+  if (currentRole === "chauffeur") {
+    return ["admin", "admin_societe", "super_super_admin"].includes(rejectRole);
+  }
+
+  if (currentRole === "admin") {
+    return ["admin_societe", "super_super_admin"].includes(rejectRole);
+  }
+
+  if (currentRole === "admin_societe") {
+    return rejectRole === "super_super_admin";
+  }
+
+  if (currentRole === "super_super_admin") {
+    return true;
+  }
+
+  return false;
+}
 
   return (
     <main className="mx-auto max-w-5xl p-6 text-white">
@@ -431,8 +498,58 @@ async function ReportPageContent({ params }: PageProps) {
           </div>
         )}
       </section>
+      {latestWorkflowReject &&
+  canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) && (
+    <section className="mb-6 rounded-lg border border-red-400 bg-red-950/30 p-4 text-red-100">
+      <details>
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Journée rejetée par{" "}
+                {getRejectAuthorLabel(latestWorkflowReject.changed_role)}
+              </h2>
 
-      <section className="mb-6 rounded-lg border border-white/20 p-4">
+              <p className="mt-1 text-sm text-red-100/70">
+                Cliquer pour voir le motif du rejet.
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full border border-red-300/40 bg-red-500/20 px-3 py-1 text-xs text-red-100">
+              Rejet
+            </span>
+          </div>
+        </summary>
+
+        <div className="mt-4 rounded-lg border border-red-300/20 bg-black/20 p-4 text-sm">
+          <p>
+            <strong>Statut concerné :</strong>{" "}
+            {formatWorkflowLabel(latestWorkflowReject.old_status)} →{" "}
+            {formatWorkflowLabel(latestWorkflowReject.new_status)}
+          </p>
+
+          <p className="mt-2">
+            <strong>Rejeté par :</strong>{" "}
+            {getRejectAuthorLabel(latestWorkflowReject.changed_role)}
+          </p>
+
+          <p className="mt-2">
+            <strong>Date :</strong>{" "}
+            {formatDate(latestWorkflowReject.created_at)}
+          </p>
+
+          <p className="mt-2">
+            <strong>Motif :</strong>{" "}
+            {latestWorkflowReject.comment_text?.trim()
+              ? latestWorkflowReject.comment_text
+              : "Aucun commentaire renseigné."}
+          </p>
+        </div>
+      </details>
+    </section>
+  )}
+
+      <section className="mb-6 rounded-lg border border-white/20 p-4"> 
         <h2 className="mb-4 text-xl font-semibold">Résumé métier</h2>
 
         {reportError ? (
