@@ -337,7 +337,7 @@ async function ReportPageContent({ params }: PageProps) {
   const workflowBadgeColor = statusBadge?.badge_color ?? "#6b7280";
 
   const isLocked = Boolean(report?.workflow_locked);
-  const latestWorkflowReject = formattedWorkflowLogs.find((log) => {
+ const latestWorkflowReject = formattedWorkflowLogs.find((log) => {
   if (!report?.workflow_status) return false;
 
   const isCurrentReturn = log.new_status === report.workflow_status;
@@ -359,13 +359,36 @@ async function ReportPageContent({ params }: PageProps) {
 
   return (
     isCurrentReturn &&
-    (
-      adminRejectedChauffeur ||
+    (adminRejectedChauffeur ||
       adminSocieteRejectedAdmin ||
-      superAdminRejectedAdminSociete
-    )
+      superAdminRejectedAdminSociete)
   );
 });
+
+const latestWorkflowValidation = !latestWorkflowReject
+  ? formattedWorkflowLogs.find((log) => {
+  const adminValidatedChauffeur =
+    log.changed_role === "admin" &&
+    log.old_status === "saisi_chauffeur" &&
+    log.new_status === "valide_admin";
+
+  const adminSocieteValidatedAdmin =
+    log.changed_role === "admin_societe" &&
+    log.old_status === "valide_admin" &&
+    log.new_status === "en_attente_prefacturation";
+
+  const superAdminValidatedAdminSociete =
+    log.changed_role === "super_super_admin" &&
+    log.old_status === "en_attente_prefacturation" &&
+    log.new_status === "valide_super_admin";
+
+  return (
+    adminValidatedChauffeur ||
+    adminSocieteValidatedAdmin ||
+    superAdminValidatedAdminSociete
+  );
+})
+  : null;
 
 function getRejectAuthorLabel(role: string | null) {
   switch (role) {
@@ -396,6 +419,42 @@ function canSeeRejectNotice(
 
   if (currentRole === "admin_societe") {
     return rejectRole === "super_super_admin";
+  }
+
+  return false;
+}
+
+function getValidationAuthorLabel(role: string | null) {
+  switch (role) {
+    case "admin":
+      return "le chef d’équipe";
+    case "admin_societe":
+      return "Elias";
+    case "super_super_admin":
+      return "Mickael";
+    default:
+      return "un responsable";
+  }
+}
+
+function canSeeValidationNotice(
+  currentRole: string | null,
+  validationRole: string | null
+) {
+  if (!currentRole || !validationRole) return false;
+
+  if (currentRole === "chauffeur") {
+    return ["admin", "admin_societe", "super_super_admin"].includes(
+      validationRole
+    );
+  }
+
+  if (currentRole === "admin") {
+    return ["admin_societe", "super_super_admin"].includes(validationRole);
+  }
+
+  if (currentRole === "admin_societe") {
+    return validationRole === "super_super_admin";
   }
 
   return false;
@@ -543,6 +602,63 @@ function canSeeRejectNotice(
             <strong>Motif :</strong>{" "}
             {latestWorkflowReject.comment_text?.trim()
               ? latestWorkflowReject.comment_text
+              : "Aucun commentaire renseigné."}
+          </p>
+        </div>
+      </details>
+    </section>
+  )}
+      {latestWorkflowValidation &&
+  canSeeValidationNotice(
+    currentRole,
+    latestWorkflowValidation.changed_role
+  ) && (
+    <section className="mb-6 rounded-lg border border-green-400 bg-green-950/30 p-4 text-green-100">
+      <details>
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Journée validée par{" "}
+                {getValidationAuthorLabel(
+                  latestWorkflowValidation.changed_role
+                )}
+              </h2>
+
+              <p className="mt-1 text-sm text-green-100/70">
+                Cliquer pour voir le détail de la validation.
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full border border-green-300/40 bg-green-500/20 px-3 py-1 text-xs text-green-100">
+              Validation
+            </span>
+          </div>
+        </summary>
+
+        <div className="mt-4 rounded-lg border border-green-300/20 bg-black/20 p-4 text-sm">
+          <p>
+            <strong>Statut concerné :</strong>{" "}
+            {formatWorkflowLabel(latestWorkflowValidation.old_status)} →{" "}
+            {formatWorkflowLabel(latestWorkflowValidation.new_status)}
+          </p>
+
+          <p className="mt-2">
+            <strong>Validée par :</strong>{" "}
+            {getValidationAuthorLabel(
+              latestWorkflowValidation.changed_role
+            )}
+          </p>
+
+          <p className="mt-2">
+            <strong>Date :</strong>{" "}
+            {formatDate(latestWorkflowValidation.created_at)}
+          </p>
+
+          <p className="mt-2">
+            <strong>Commentaire :</strong>{" "}
+            {latestWorkflowValidation.comment_text?.trim()
+              ? latestWorkflowValidation.comment_text
               : "Aucun commentaire renseigné."}
           </p>
         </div>
