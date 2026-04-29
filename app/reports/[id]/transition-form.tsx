@@ -111,13 +111,21 @@ export default function TransitionForm({
     optionLabel = "Rejeter et renvoyer à l’admin";
   }
 
-  if (
-    currentStatus === "en_attente_prefacturation" &&
-    status === "valide_admin" &&
-    currentRole === "super_super_admin"
-  ) {
-    optionLabel = "Rejeter et renvoyer à l’admin société";
-  }
+ if (
+  currentStatus === "en_attente_prefacturation" &&
+  status === "valide_admin" &&
+  currentRole === "super_super_admin"
+) {
+  optionLabel = "Rejeter et renvoyer à Elias";
+}
+
+if (
+  currentStatus === "valide_super_admin" &&
+  status === "valide_admin" &&
+  currentRole === "super_super_admin"
+) {
+  optionLabel = "Rejeter et renvoyer à Elias";
+}
 
   return (
     <option key={status} value={status}>
