@@ -92,11 +92,39 @@ export default function TransitionForm({
           required
         >
           <option value="">Choisir un statut</option>
-          {allowedTransitions.map((status) => (
-            <option key={status} value={status}>
-              {formatWorkflowLabel(status)}
-            </option>
-          ))}
+          {allowedTransitions.map((status) => {
+  let optionLabel = formatWorkflowLabel(status);
+
+  if (
+    currentStatus === "saisi_chauffeur" &&
+    status === "brouillon" &&
+    ["admin", "admin_societe", "super_super_admin"].includes(currentRole ?? "")
+  ) {
+    optionLabel = "Rejeter et renvoyer au chauffeur";
+  }
+
+  if (
+    currentStatus === "valide_admin" &&
+    status === "saisi_chauffeur" &&
+    ["admin_societe", "super_super_admin"].includes(currentRole ?? "")
+  ) {
+    optionLabel = "Rejeter et renvoyer à l’admin";
+  }
+
+  if (
+    currentStatus === "en_attente_prefacturation" &&
+    status === "valide_admin" &&
+    currentRole === "super_super_admin"
+  ) {
+    optionLabel = "Rejeter et renvoyer à l’admin société";
+  }
+
+  return (
+    <option key={status} value={status}>
+      {optionLabel}
+    </option>
+  );
+})}
         </select>
       </div>
 
