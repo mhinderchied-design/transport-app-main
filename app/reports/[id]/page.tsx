@@ -392,13 +392,8 @@ function canSeeRejectNotice(
     return rejectRole === "super_super_admin";
   }
 
-  if (currentRole === "super_super_admin") {
-    return true;
-  }
-
   return false;
 }
-
   return (
     <main className="mx-auto max-w-5xl p-6 text-white">
       <div className="mb-6 flex items-center justify-between gap-4">
