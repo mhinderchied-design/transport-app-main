@@ -309,10 +309,16 @@ async function ReportPageContent({ params }: PageProps) {
 
   if (report?.workflow_status && currentRole && !report.workflow_locked) {
     if (currentRole === "super_super_admin") {
-      allowedTransitions = ALL_WORKFLOW_STATUSES.filter(
-        (status) => status !== report.workflow_status
-      );
-    } else {
+  const { data: transitionsData } = await supabase
+    .from("app_report_workflow_transitions")
+    .select("to_status")
+    .eq("from_status", report.workflow_status)
+    .eq("allowed_role", currentRole)
+    .eq("is_active", true)
+    .returns<TransitionRow[]>();
+
+  allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
+} else {
       const { data: transitionsData } = await supabase
         .from("app_report_workflow_transitions")
         .select("to_status")
