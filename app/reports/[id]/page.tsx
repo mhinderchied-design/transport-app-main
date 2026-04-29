@@ -579,7 +579,7 @@ function canSeeValidationNotice(
         )}
       </section>
       {report &&
-      {latestWorkflowReject &&
+      latestWorkflowReject &&
 canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) &&
 (
   (currentRole === "chauffeur" && report.chauffeur_status === "refuse") ||
