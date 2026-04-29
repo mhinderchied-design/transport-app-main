@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import LogoutButton from "./logout-button";
 import {
   runReportWorkflowTransition,
   unlockReport,
@@ -333,7 +334,10 @@ async function ReportPageContent({ params }: PageProps) {
 
   return (
     <main className="mx-auto max-w-5xl p-6 text-white">
-      <h1 className="mb-6 text-3xl font-bold">Rapport journalier #{reportId}</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+  <h1 className="text-3xl font-bold">Rapport journalier #{reportId}</h1>
+  <LogoutButton />
+</div>
 
       {isLocked && (
         <section className="mb-6 rounded-lg border border-red-400 bg-red-950/40 p-4 text-red-100">
