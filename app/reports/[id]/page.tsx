@@ -344,10 +344,6 @@ async function ReportPageContent({ params }: PageProps) {
 
   const isLocked = Boolean(report?.workflow_locked);
  const latestWorkflowReject = formattedWorkflowLogs.find((log) => {
-  if (!report?.workflow_status) return false;
-
-  const isCurrentReturn = log.new_status === report.workflow_status;
-
   const adminRejectedChauffeur =
     log.changed_role === "admin" &&
     log.old_status === "saisi_chauffeur" &&
@@ -364,36 +360,34 @@ async function ReportPageContent({ params }: PageProps) {
     log.new_status === "valide_admin";
 
   return (
-    isCurrentReturn &&
-    (adminRejectedChauffeur ||
-      adminSocieteRejectedAdmin ||
-      superAdminRejectedAdminSociete)
+    adminRejectedChauffeur ||
+    adminSocieteRejectedAdmin ||
+    superAdminRejectedAdminSociete
   );
 });
-
 const latestWorkflowValidation = !latestWorkflowReject
   ? formattedWorkflowLogs.find((log) => {
-  const adminValidatedChauffeur =
-    log.changed_role === "admin" &&
-    log.old_status === "saisi_chauffeur" &&
-    log.new_status === "valide_admin";
+      const adminValidatedChauffeur =
+        log.changed_role === "admin" &&
+        log.old_status === "saisi_chauffeur" &&
+        log.new_status === "valide_admin";
 
-  const adminSocieteValidatedAdmin =
-    log.changed_role === "admin_societe" &&
-    log.old_status === "valide_admin" &&
-    log.new_status === "en_attente_prefacturation";
+      const adminSocieteValidatedAdmin =
+        log.changed_role === "admin_societe" &&
+        log.old_status === "valide_admin" &&
+        log.new_status === "en_attente_prefacturation";
 
-  const superAdminValidatedAdminSociete =
-    log.changed_role === "super_super_admin" &&
-    log.old_status === "en_attente_prefacturation" &&
-    log.new_status === "valide_super_admin";
+      const superAdminValidatedAdminSociete =
+        log.changed_role === "super_super_admin" &&
+        log.old_status === "en_attente_prefacturation" &&
+        log.new_status === "valide_super_admin";
 
-  return (
-    adminValidatedChauffeur ||
-    adminSocieteValidatedAdmin ||
-    superAdminValidatedAdminSociete
-  );
-})
+      return (
+        adminValidatedChauffeur ||
+        adminSocieteValidatedAdmin ||
+        superAdminValidatedAdminSociete
+      );
+    })
   : null;
 
 function getRejectAuthorLabel(role: string | null) {
@@ -411,25 +405,41 @@ function getRejectAuthorLabel(role: string | null) {
 
 function canSeeRejectNotice(
   currentRole: string | null,
-  rejectRole: string | null
+  log: WorkflowLogRow | null
 ) {
-  if (!currentRole || !rejectRole) return false;
+  if (!currentRole || !log) return false;
 
-  if (currentRole === "chauffeur") {
-    return ["admin", "admin_societe", "super_super_admin"].includes(rejectRole);
+  const adminRejectedChauffeur =
+    log.changed_role === "admin" &&
+    log.old_status === "saisi_chauffeur" &&
+    log.new_status === "brouillon";
+
+  const adminSocieteRejectedAdmin =
+    log.changed_role === "admin_societe" &&
+    log.old_status === "valide_admin" &&
+    log.new_status === "saisi_chauffeur";
+
+  const superAdminRejectedAdminSociete =
+    log.changed_role === "super_super_admin" &&
+    log.old_status === "en_attente_prefacturation" &&
+    log.new_status === "valide_admin";
+
+  if (adminRejectedChauffeur) {
+    return ["chauffeur", "admin_societe", "super_super_admin"].includes(
+      currentRole
+    );
   }
 
-  if (currentRole === "admin") {
-    return ["admin_societe", "super_super_admin"].includes(rejectRole);
+  if (adminSocieteRejectedAdmin) {
+    return ["admin", "super_super_admin"].includes(currentRole);
   }
 
-  if (currentRole === "admin_societe") {
-    return rejectRole === "super_super_admin";
+  if (superAdminRejectedAdminSociete) {
+    return ["admin_societe"].includes(currentRole);
   }
 
   return false;
 }
-
 function getValidationAuthorLabel(role: string | null) {
   switch (role) {
     case "admin":
@@ -445,22 +455,37 @@ function getValidationAuthorLabel(role: string | null) {
 
 function canSeeValidationNotice(
   currentRole: string | null,
-  validationRole: string | null
+  log: WorkflowLogRow | null
 ) {
-  if (!currentRole || !validationRole) return false;
+  if (!currentRole || !log) return false;
 
-  if (currentRole === "chauffeur") {
-    return ["admin", "admin_societe", "super_super_admin"].includes(
-      validationRole
+  const adminValidatedChauffeur =
+    log.changed_role === "admin" &&
+    log.old_status === "saisi_chauffeur" &&
+    log.new_status === "valide_admin";
+
+  const adminSocieteValidatedAdmin =
+    log.changed_role === "admin_societe" &&
+    log.old_status === "valide_admin" &&
+    log.new_status === "en_attente_prefacturation";
+
+  const superAdminValidatedAdminSociete =
+    log.changed_role === "super_super_admin" &&
+    log.old_status === "en_attente_prefacturation" &&
+    log.new_status === "valide_super_admin";
+
+  if (adminValidatedChauffeur) {
+    return ["chauffeur", "admin_societe", "super_super_admin"].includes(
+      currentRole
     );
   }
 
-  if (currentRole === "admin") {
-    return ["admin_societe", "super_super_admin"].includes(validationRole);
+  if (adminSocieteValidatedAdmin) {
+    return ["admin", "super_super_admin"].includes(currentRole);
   }
 
-  if (currentRole === "admin_societe") {
-    return validationRole === "super_super_admin";
+  if (superAdminValidatedAdminSociete) {
+    return ["admin_societe"].includes(currentRole);
   }
 
   return false;
@@ -580,12 +605,8 @@ function canSeeValidationNotice(
       </section>
       {report &&
       latestWorkflowReject &&
-canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) &&
+canSeeRejectNotice(currentRole, latestWorkflowReject) &&
 (
-  (currentRole === "chauffeur" && report.chauffeur_status === "refuse") ||
-  (currentRole === "admin" && report.admin_status === "refuse") ||
-  (currentRole === "admin_societe" && report.admin_societe_status === "refuse")
-) && (
     <section className="mb-6 rounded-lg border border-red-400 bg-red-950/30 p-4 text-red-100">
       <details>
         <summary className="cursor-pointer list-none">
@@ -635,10 +656,10 @@ canSeeRejectNotice(currentRole, latestWorkflowReject.changed_role) &&
     </section>
   )}
       {latestWorkflowValidation &&
-  canSeeValidationNotice(
-    currentRole,
-    latestWorkflowValidation.changed_role
-  ) && (
+ canSeeValidationNotice(
+  currentRole,
+  latestWorkflowValidation
+) && (
     <section className="mb-6 rounded-lg border border-green-400 bg-green-950/30 p-4 text-green-100">
       <details>
         <summary className="cursor-pointer list-none">
