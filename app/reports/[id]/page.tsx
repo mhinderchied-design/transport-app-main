@@ -585,7 +585,7 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
         ) : !report ? (
           <p>Rapport introuvable</p>
         ) : (
-          <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
+         <div className="flex flex-col gap-3 text-sm md:text-base">
        <p>
   <strong>ID :</strong> {report.id}
 </p>
