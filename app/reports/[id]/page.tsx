@@ -319,10 +319,15 @@ function buildWorkflowHeaderDisplay(
 }
 
 function buildRejectNotice(
+  report: ReportRow | null,
   logs: WorkflowLogRow[],
   currentRole: string | null
 ): RejectNotice | null {
-  if (!currentRole) return null;
+  if (!currentRole || !report) return null;
+
+  if (currentRole === "chauffeur" && report.workflow_status !== "brouillon") {
+    return null;
+  }
 
   const rejectLog = logs.find((log) => {
     if (currentRole === "chauffeur") {
@@ -481,7 +486,7 @@ const workflowDisplay = buildWorkflowHeaderDisplay(
   currentRole
 );
 
-const rejectNotice = buildRejectNotice(formattedWorkflowLogs, currentRole);
+const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRole);
   let statusBadge: WorkflowStatusBadge | null = null;
 
   if (report?.workflow_status) {
@@ -596,13 +601,26 @@ const rejectNotice = buildRejectNotice(formattedWorkflowLogs, currentRole);
                 {report.workflow_status ?? "—"}
               </span>
             </p>
-            <p>
-  <strong>Statut journée :</strong> {workflowDisplay.main}
+ <p>
+  <strong>Statut journée :</strong>{" "}
+  <span
+    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+      workflowDisplay.main.includes("corriger")
+        ? "border-red-500/50 bg-red-500/15 text-red-200"
+        : workflowDisplay.main.includes("validée")
+        ? "border-green-500/50 bg-green-500/15 text-green-200"
+        : "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
+    }`}
+  >
+    {workflowDisplay.main}
+  </span>
 </p>
 
 <p>
-  <strong>Suivi :</strong> {workflowDisplay.sub}
+  <strong>Suivi :</strong>{" "}
+  <span className="text-white/80">{workflowDisplay.sub}</span>
 </p>
+
             <p>
   <strong>Statut chauffeur :</strong>{" "}
   {report.chauffeur_status ?? "—"}
