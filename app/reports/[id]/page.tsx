@@ -208,71 +208,167 @@ function getRoleLabel(role: string | null) {
   }
 }
 
-type DisplayStatus = {
+type WorkflowHeaderDisplay = {
   main: string;
   sub: string;
-  type: "success" | "error" | "pending";
-  log: WorkflowLogRow | null;
 };
 
-function buildWorkflowDisplay(
+type RejectNotice = {
+  title: string;
+  comment: string | null;
+  createdAt: string | null;
+};
+
+function buildWorkflowHeaderDisplay(
   report: ReportRow | null,
-  logs: WorkflowLogRow[]
-): DisplayStatus {
+  logs: WorkflowLogRow[],
+  currentRole: string | null
+): WorkflowHeaderDisplay {
   const lastLog = logs[0] ?? null;
 
-  if (!lastLog) {
+  if (!report) {
     return {
       main: "Journée en cours",
-      sub: "Aucune action enregistrée",
-      type: "pending",
-      log: null,
+      sub: "Aucun rapport chargé",
     };
   }
 
-  const actor = getRoleLabel(lastLog.changed_role);
+  if (currentRole === "chauffeur") {
+    if (report.workflow_status === "brouillon") {
+      return {
+        main: "Journée à corriger",
+        sub: lastLog ? `Refusée par ${getRoleLabel(lastLog.changed_role)}` : "À corriger",
+      };
+    }
 
-  const isReject =
-    (lastLog.old_status === "saisi_chauffeur" &&
-      lastLog.new_status === "brouillon") ||
-    (lastLog.old_status === "valide_admin" &&
-      lastLog.new_status === "saisi_chauffeur") ||
-    (lastLog.old_status === "en_attente_prefacturation" &&
-      lastLog.new_status === "valide_admin");
+    if (report.workflow_status === "saisi_chauffeur") {
+      return {
+        main: "Journée validée",
+        sub: "En attente de validation du chef d’équipe",
+      };
+    }
 
-  if (isReject) {
-    return {
-      main: "Journée à corriger",
-      sub: `Refusée par ${actor}`,
-      type: "error",
-      log: lastLog,
-    };
-  }
-
-  const isValidation =
-    (lastLog.old_status === "saisi_chauffeur" &&
-      lastLog.new_status === "valide_admin") ||
-    (lastLog.old_status === "valide_admin" &&
-      lastLog.new_status === "en_attente_prefacturation") ||
-    (lastLog.old_status === "en_attente_prefacturation" &&
-      lastLog.new_status === "valide_super_admin");
-
-  if (isValidation) {
     return {
       main: "Journée validée",
-      sub: `Validée par ${actor}`,
-      type: "success",
-      log: lastLog,
+      sub: lastLog ? `Validée par ${getRoleLabel(lastLog.changed_role)}` : "Validée",
+    };
+  }
+
+  if (currentRole === "admin") {
+    if (report.workflow_status === "saisi_chauffeur") {
+      return {
+        main: "Journée admin à corriger",
+        sub: lastLog ? `Refusée par ${getRoleLabel(lastLog.changed_role)}` : "À corriger",
+      };
+    }
+
+    if (report.workflow_status === "valide_admin") {
+      return {
+        main: "Journée admin validée",
+        sub: "En attente de validation société",
+      };
+    }
+
+    if (report.workflow_status === "en_attente_prefacturation") {
+      return {
+        main: "Journée admin validée",
+        sub: lastLog ? `Validée par ${getRoleLabel(lastLog.changed_role)}` : "Validée",
+      };
+    }
+
+    return {
+      main: "Journée en cours",
+      sub: `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`,
+    };
+  }
+
+  if (currentRole === "admin_societe") {
+    if (report.workflow_status === "valide_admin") {
+      return {
+        main: "Journée société à corriger",
+        sub: lastLog ? `Refusée par ${getRoleLabel(lastLog.changed_role)}` : "À corriger",
+      };
+    }
+
+    if (report.workflow_status === "en_attente_prefacturation") {
+      return {
+        main: "Journée société validée",
+        sub: "En attente de validation finale",
+      };
+    }
+
+    if (report.workflow_status === "valide_super_admin") {
+      return {
+        main: "Journée société validée",
+        sub: lastLog ? `Validée par ${getRoleLabel(lastLog.changed_role)}` : "Validée",
+      };
+    }
+
+    return {
+      main: "Journée en cours",
+      sub: `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`,
     };
   }
 
   return {
-    main: "Journée en cours",
-    sub: report?.workflow_status
+    main: "Vue super admin",
+    sub: report.workflow_status
       ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
-      : "En attente",
-    type: "pending",
-    log: null,
+      : "Statut inconnu",
+  };
+}
+
+function buildRejectNotice(
+  logs: WorkflowLogRow[],
+  currentRole: string | null
+): RejectNotice | null {
+  if (!currentRole) return null;
+
+  const rejectLog = logs.find((log) => {
+    if (currentRole === "chauffeur") {
+      return (
+        log.new_status === "brouillon" &&
+        ["admin", "admin_societe", "super_super_admin"].includes(
+          log.changed_role ?? ""
+        )
+      );
+    }
+
+    if (currentRole === "admin") {
+      return (
+        log.old_status === "valide_admin" &&
+        log.new_status === "saisi_chauffeur" &&
+        ["admin_societe", "super_super_admin"].includes(log.changed_role ?? "")
+      );
+    }
+
+    if (currentRole === "admin_societe") {
+      return (
+        log.old_status === "en_attente_prefacturation" &&
+        log.new_status === "valide_admin" &&
+        log.changed_role === "super_super_admin"
+      );
+    }
+
+    if (currentRole === "super_super_admin") {
+      return (
+        log.new_status === "brouillon" ||
+        (log.old_status === "valide_admin" &&
+          log.new_status === "saisi_chauffeur") ||
+        (log.old_status === "en_attente_prefacturation" &&
+          log.new_status === "valide_admin")
+      );
+    }
+
+    return false;
+  });
+
+  if (!rejectLog) return null;
+
+  return {
+    title: `Journée refusée par ${getRoleLabel(rejectLog.changed_role)}`,
+    comment: rejectLog.comment_text,
+    createdAt: rejectLog.created_at,
   };
 }
 
@@ -379,8 +475,13 @@ async function ReportPageContent({ params }: PageProps) {
     created_at: log.created_at,
   })) ?? [];
 
-const display = buildWorkflowDisplay(report, formattedWorkflowLogs);
+const workflowDisplay = buildWorkflowHeaderDisplay(
+  report,
+  formattedWorkflowLogs,
+  currentRole
+);
 
+const rejectNotice = buildRejectNotice(formattedWorkflowLogs, currentRole);
   let statusBadge: WorkflowStatusBadge | null = null;
 
   if (report?.workflow_status) {
@@ -496,6 +597,13 @@ const display = buildWorkflowDisplay(report, formattedWorkflowLogs);
               </span>
             </p>
             <p>
+  <strong>Statut journée :</strong> {workflowDisplay.main}
+</p>
+
+<p>
+  <strong>Suivi :</strong> {workflowDisplay.sub}
+</p>
+            <p>
   <strong>Statut chauffeur :</strong>{" "}
   {report.chauffeur_status ?? "—"}
 </p>
@@ -539,28 +647,27 @@ const display = buildWorkflowDisplay(report, formattedWorkflowLogs);
           </div>
         )}
       </section>
-      <section
-  className={`mb-6 rounded-lg border p-4 ${
-    display.type === "error"
-      ? "border-red-400 bg-red-950/30 text-red-100"
-      : display.type === "success"
-      ? "border-green-400 bg-green-950/30 text-green-100"
-      : "border-yellow-400 bg-yellow-950/30 text-yellow-100"
-  }`}
->
-  <h2 className="text-lg font-semibold">{display.main}</h2>
+     {rejectNotice && (
+  <section className="mb-6 rounded-lg border border-red-400 bg-red-950/30 p-4 text-red-100">
+    <h2 className="text-lg font-semibold">{rejectNotice.title}</h2>
 
-  <p className="mt-1 text-sm">{display.sub}</p>
+    <p className="mt-1 text-sm opacity-70">
+      Cliquer pour voir le motif du refus.
+    </p>
 
-  {display.log?.comment_text && (
-    <details className="mt-2">
+    <details className="mt-3">
       <summary className="cursor-pointer underline">
         Voir le commentaire
       </summary>
-      <p className="mt-2">{display.log.comment_text}</p>
+
+      <p className="mt-2 text-sm">
+        {rejectNotice.comment?.trim()
+          ? rejectNotice.comment
+          : "Aucun commentaire renseigné."}
+      </p>
     </details>
-  )}
-</section>
+  </section>
+)}
 
       <section className="mb-6 rounded-lg border border-white/20 p-4"> 
         <h2 className="mb-4 text-xl font-semibold">Résumé métier</h2>
