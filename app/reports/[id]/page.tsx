@@ -34,6 +34,7 @@ type ReportRow = {
   workflow_last_changed_by: string | null;
   saisi_par_chauffeur_id: string | null;
   valide_chauffeur_at: string | null;
+  valide_admin_at: string | null;
 };
 
 type WorkflowStatusBadge = {
@@ -435,6 +436,7 @@ async function ReportPageContent({ params }: PageProps) {
         workflow_last_changed_at,
         workflow_last_changed_by,
         saisi_par_chauffeur_id,
+        valide_admin_at,
         valide_chauffeur_at
       `
     )
@@ -585,33 +587,18 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
             <p>
-              <strong>ID :</strong> {report.id}
-            </p>
+  <strong>ID :</strong> {report.id}
+</p>
 
-            <p>
-              <strong>Statut :</strong>{" "}
-              {getStatusBadge(
-                report.workflow_status,
-                workflowLabel,
-                workflowBadgeColor
-              )}
-            </p>
-
-            <p>
-              <strong>Statut technique :</strong>{" "}
-              <span className="text-xs opacity-60">
-                {report.workflow_status ?? "—"}
-              </span>
-            </p>
- <p>
+<p>
   <strong>Statut :</strong>{" "}
   <span
     className={`rounded-full border px-3 py-1 text-xs font-semibold ${
       workflowDisplay.main.includes("Brouillon")
-  ? "border-gray-500/40 bg-gray-500/15 text-gray-200"
-  : workflowDisplay.main.includes("Validé")
-  ? "border-green-500/50 bg-green-500/15 text-green-200"
-  : "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
+        ? "border-gray-500/40 bg-gray-500/15 text-gray-200"
+        : workflowDisplay.main.includes("Validé")
+        ? "border-green-500/50 bg-green-500/15 text-green-200"
+        : "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
     }`}
   >
     {workflowDisplay.main}
@@ -623,47 +610,20 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
   <span className="text-white/80">{workflowDisplay.sub}</span>
 </p>
 
-            <p>
-  <strong>Statut chauffeur :</strong>{" "}
-  {report.chauffeur_status ?? "—"}
+<p>
+  <strong>Dernière modification :</strong>{" "}
+  {formatDate(report.workflow_last_changed_at)}
 </p>
 
 <p>
-  <strong>Statut admin :</strong>{" "}
-  {report.admin_status ?? "—"}
+  <strong>Validation chauffeur :</strong>{" "}
+  {formatDate(report.valide_chauffeur_at)}
 </p>
 
 <p>
-  <strong>Statut admin société :</strong>{" "}
-  {report.admin_societe_status ?? "—"}
+  <strong>Validation chef d’équipe :</strong>{" "}
+  {formatDate(report.valide_admin_at)}
 </p>
-
-            <p>
-              <strong>Verrouillé :</strong>{" "}
-              <span className={isLocked ? "text-red-300" : "text-green-300"}>
-                {isLocked ? "Oui" : "Non"}
-              </span>
-            </p>
-
-            <p>
-              <strong>Dernière modification :</strong>{" "}
-              {formatDate(report.workflow_last_changed_at)}
-            </p>
-
-            <p>
-              <strong>Modifié par :</strong>{" "}
-              {report.workflow_last_changed_by ?? "—"}
-            </p>
-
-            <p>
-              <strong>Saisi par chauffeur :</strong>{" "}
-              {report.saisi_par_chauffeur_id ?? "—"}
-            </p>
-
-            <p>
-              <strong>Validation chauffeur :</strong>{" "}
-              {formatDate(report.valide_chauffeur_at)}
-            </p>
           </div>
         )}
       </section>
