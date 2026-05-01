@@ -586,7 +586,7 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
           <p>Rapport introuvable</p>
         ) : (
           <div className="grid gap-3 text-sm md:grid-cols-2 md:text-base">
-            <p>
+       <p>
   <strong>ID :</strong> {report.id}
 </p>
 
@@ -607,12 +607,20 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
 
 <p>
   <strong>Suivi :</strong>{" "}
-  <span className="text-white/80">{workflowDisplay.sub}</span>
-</p>
-
-<p>
-  <strong>Dernière modification :</strong>{" "}
-  {formatDate(report.workflow_last_changed_at)}
+  <span
+    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+      workflowDisplay.sub.includes("corriger") ||
+      workflowDisplay.sub.includes("Refus")
+        ? "border-red-500/50 bg-red-500/15 text-red-200"
+        : workflowDisplay.sub.includes("attente")
+        ? "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
+        : workflowDisplay.sub.includes("Validé")
+        ? "border-green-500/50 bg-green-500/15 text-green-200"
+        : "border-blue-500/50 bg-blue-500/15 text-blue-200"
+    }`}
+  >
+    {workflowDisplay.sub}
+  </span>
 </p>
 
 <p>
