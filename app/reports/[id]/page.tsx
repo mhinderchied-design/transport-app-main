@@ -233,26 +233,28 @@ function buildWorkflowHeaderDisplay(
     };
   }
 
-  if (currentRole === "chauffeur") {
-    if (report.workflow_status === "brouillon") {
-      return {
-        main: "Journée à corriger",
-        sub: lastLog ? `Refusée par ${getRoleLabel(lastLog.changed_role)}` : "À corriger",
-      };
-    }
-
-    if (report.workflow_status === "saisi_chauffeur") {
-      return {
-        main: "Journée validée",
-        sub: "En attente de validation du chef d’équipe",
-      };
-    }
-
+if (currentRole === "chauffeur") {
+  if (report.workflow_status === "brouillon") {
     return {
-      main: "Journée validée",
-      sub: lastLog ? `Validée par ${getRoleLabel(lastLog.changed_role)}` : "Validée",
+      main: "Brouillon",
+      sub: "Journée à corriger",
     };
   }
+
+  if (report.workflow_status === "saisi_chauffeur") {
+    return {
+      main: "Validé",
+      sub: "En attente de validation du chef d’équipe",
+    };
+  }
+
+  return {
+    main: "Validé",
+    sub: lastLog
+      ? `Validé par ${getRoleLabel(lastLog.changed_role)}`
+      : "Validé",
+  };
+}
 
   if (currentRole === "admin") {
     if (report.workflow_status === "saisi_chauffeur") {
@@ -602,14 +604,14 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
               </span>
             </p>
  <p>
-  <strong>Statut journée :</strong>{" "}
+  <strong>Statut :</strong>{" "}
   <span
     className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-      workflowDisplay.main.includes("corriger")
-        ? "border-red-500/50 bg-red-500/15 text-red-200"
-        : workflowDisplay.main.includes("validée")
-        ? "border-green-500/50 bg-green-500/15 text-green-200"
-        : "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
+      workflowDisplay.main.includes("Brouillon")
+  ? "border-gray-500/40 bg-gray-500/15 text-gray-200"
+  : workflowDisplay.main.includes("Validé")
+  ? "border-green-500/50 bg-green-500/15 text-green-200"
+  : "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
     }`}
   >
     {workflowDisplay.main}
