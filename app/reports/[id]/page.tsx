@@ -357,14 +357,6 @@ function buildWorkflowHeaderDisplay(
   };
 }
 
-  return {
-    main: "Vue super admin",
-    sub: report.workflow_status
-      ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
-      : "Statut inconnu",
-  };
-}
-
 function buildRejectNotice(
   report: ReportRow | null,
   logs: WorkflowLogRow[],
