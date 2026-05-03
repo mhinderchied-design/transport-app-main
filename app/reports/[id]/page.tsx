@@ -225,93 +225,137 @@ function buildWorkflowHeaderDisplay(
   logs: WorkflowLogRow[],
   currentRole: string | null
 ): WorkflowHeaderDisplay {
-  const lastLog = logs[0] ?? null;
-
   if (!report) {
     return {
-      main: "Journée en cours",
+      main: "Brouillon",
       sub: "Aucun rapport chargé",
     };
   }
 
-if (currentRole === "chauffeur") {
-  if (report.workflow_status === "brouillon") {
-    return {
-      main: "Brouillon",
-      sub: "Journée à corriger",
-    };
-  }
+  const hasChauffeurReject = logs.some(
+    (log) =>
+      log.new_status === "brouillon" &&
+      ["admin", "admin_societe", "super_super_admin"].includes(
+        log.changed_role ?? ""
+      )
+  );
 
-  if (report.workflow_status === "saisi_chauffeur") {
+  const hasAdminReject = logs.some(
+    (log) =>
+      log.old_status === "valide_admin" &&
+      log.new_status === "saisi_chauffeur" &&
+      ["admin_societe", "super_super_admin"].includes(log.changed_role ?? "")
+  );
+
+  const hasAdminSocieteReject = logs.some(
+    (log) =>
+      log.old_status === "en_attente_prefacturation" &&
+      log.new_status === "valide_admin" &&
+      log.changed_role === "super_super_admin"
+  );
+
+  if (currentRole === "chauffeur") {
+    if (report.workflow_status === "brouillon") {
+      return {
+        main: "Brouillon",
+        sub: hasChauffeurReject ? "Journée à corriger" : "En attente de saisie",
+      };
+    }
+
+    if (report.workflow_status === "saisi_chauffeur") {
+      return {
+        main: "Validé",
+        sub: "En attente de validation du chef d’équipe",
+      };
+    }
+
     return {
       main: "Validé",
-      sub: "En attente de validation du chef d’équipe",
+      sub: "Validé par le chef d’équipe",
     };
   }
-
-  return {
-    main: "Validé",
-    sub: lastLog
-      ? `Validé par ${getRoleLabel(lastLog.changed_role)}`
-      : "Validé",
-  };
-}
 
   if (currentRole === "admin") {
     if (report.workflow_status === "saisi_chauffeur") {
       return {
-        main: "Journée admin à corriger",
-        sub: lastLog ? `Refusée par ${getRoleLabel(lastLog.changed_role)}` : "À corriger",
+        main: hasAdminReject ? "Brouillon" : "Brouillon",
+        sub: hasAdminReject
+          ? "Journée à corriger"
+          : "En attente de validation chef d’équipe",
       };
     }
 
     if (report.workflow_status === "valide_admin") {
       return {
-        main: "Journée admin validée",
+        main: "Validé",
         sub: "En attente de validation société",
       };
     }
 
-    if (report.workflow_status === "en_attente_prefacturation") {
+    if (
+      report.workflow_status === "en_attente_prefacturation" ||
+      report.workflow_status === "valide_super_admin" ||
+      report.workflow_status === "verrouille"
+    ) {
       return {
-        main: "Journée admin validée",
-        sub: lastLog ? `Validée par ${getRoleLabel(lastLog.changed_role)}` : "Validée",
+        main: "Validé",
+        sub: "Validé par Elias",
       };
     }
 
     return {
-      main: "Journée en cours",
-      sub: `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`,
+      main: "Brouillon",
+      sub: "En attente",
     };
   }
 
   if (currentRole === "admin_societe") {
     if (report.workflow_status === "valide_admin") {
       return {
-        main: "Journée société à corriger",
-        sub: lastLog ? `Refusée par ${getRoleLabel(lastLog.changed_role)}` : "À corriger",
+        main: hasAdminSocieteReject ? "Brouillon" : "Brouillon",
+        sub: hasAdminSocieteReject
+          ? "Journée à corriger"
+          : "En attente de validation société",
       };
     }
 
     if (report.workflow_status === "en_attente_prefacturation") {
       return {
-        main: "Journée société validée",
+        main: "Validé",
         sub: "En attente de validation finale",
       };
     }
 
-    if (report.workflow_status === "valide_super_admin") {
+    if (
+      report.workflow_status === "valide_super_admin" ||
+      report.workflow_status === "verrouille"
+    ) {
       return {
-        main: "Journée société validée",
-        sub: lastLog ? `Validée par ${getRoleLabel(lastLog.changed_role)}` : "Validée",
+        main: "Validé",
+        sub: "Validé par Mickael",
       };
     }
 
     return {
-      main: "Journée en cours",
-      sub: `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`,
+      main: "Brouillon",
+      sub: "En attente",
     };
   }
+
+  if (currentRole === "super_super_admin") {
+    return {
+      main: "Vue super admin",
+      sub: report.workflow_status
+        ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
+        : "Statut inconnu",
+    };
+  }
+
+  return {
+    main: "Brouillon",
+    sub: "En attente",
+  };
+}
 
   return {
     main: "Vue super admin",
