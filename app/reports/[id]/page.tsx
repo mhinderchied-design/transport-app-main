@@ -364,7 +364,7 @@ function buildRejectNotice(
     return null;
   }
 
-  const activeRejectConfig =
+  const config =
     currentRole === "chauffeur"
       ? {
           currentStatus: "brouillon",
@@ -373,6 +373,7 @@ function buildRejectNotice(
             ["admin", "admin_societe", "super_super_admin"].includes(
               log.changed_role ?? ""
             ),
+          resetRoles: ["chauffeur"],
         }
       : currentRole === "admin"
       ? {
@@ -383,6 +384,7 @@ function buildRejectNotice(
             ["admin_societe", "super_super_admin"].includes(
               log.changed_role ?? ""
             ),
+          resetRoles: ["admin", "chauffeur"],
         }
       : currentRole === "admin_societe"
       ? {
@@ -391,18 +393,37 @@ function buildRejectNotice(
             log.old_status === "en_attente_prefacturation" &&
             log.new_status === "valide_admin" &&
             log.changed_role === "super_super_admin",
+          resetRoles: ["admin_societe", "admin", "chauffeur"],
         }
       : null;
 
-  if (!activeRejectConfig) return null;
+  if (!config) return null;
 
-  if (report.workflow_status !== activeRejectConfig.currentStatus) {
+  if (report.workflow_status !== config.currentStatus) {
     return null;
   }
 
-  const rejectLog = logs.find(activeRejectConfig.isRejectLog);
+  const rejectLog = logs.find((log) => {
+  if (!config.isRejectLog(log)) return false;
 
-  if (!rejectLog) return null;
+  const rejectTime = log.created_at ? new Date(log.created_at).getTime() : NaN;
+  if (Number.isNaN(rejectTime)) return false;
+
+  const hasResetAfterThisReject = logs.some((resetLog) => {
+    if (!resetLog.created_at) return false;
+
+    const resetTime = new Date(resetLog.created_at).getTime();
+    if (Number.isNaN(resetTime)) return false;
+    if (resetTime <= rejectTime) return false;
+
+    return config.resetRoles.includes(resetLog.changed_role ?? "");
+  });
+
+  return !hasResetAfterThisReject;
+});
+  if (hasNewCycleAfterReject) {
+    return null;
+  }
 
   return {
     title: `Journée refusée par ${getRoleLabel(rejectLog.changed_role)}`,
