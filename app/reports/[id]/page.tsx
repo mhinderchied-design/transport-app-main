@@ -60,18 +60,6 @@ type WorkflowLogRow = {
   created_at: string | null;
 };
 
-const ALL_WORKFLOW_STATUSES = [
-  "brouillon",
-  "saisi_chauffeur",
-  "en_controle_admin",
-  "rejete",
-  "valide_admin",
-  "en_attente_prefacturation",
-  "prefacture",
-  "valide_super_admin",
-  "verrouille",
-];
-
 function formatWorkflowLabel(status: string | null) {
   switch (status) {
     case "brouillon":
@@ -372,21 +360,6 @@ function buildRejectNotice(
 ): RejectNotice | null {
   if (!currentRole || !report) return null;
 
-  if (currentRole === "chauffeur" && report.workflow_status !== "brouillon") {
-    return null;
-  }
-
-  if (currentRole === "admin" && report.workflow_status !== "saisi_chauffeur") {
-    return null;
-  }
-
-  if (
-    currentRole === "admin_societe" &&
-    report.workflow_status !== "valide_admin"
-  ) {
-    return null;
-  }
-
   if (currentRole === "super_super_admin") {
     return null;
   }
@@ -421,6 +394,44 @@ function buildRejectNotice(
   });
 
   if (!rejectLog) return null;
+
+  const hasCorrectionAfterReject = logs.some((log) => {
+    if (!log.created_at || !rejectLog.created_at) return false;
+
+    const logDate = new Date(log.created_at).getTime();
+    const rejectDate = new Date(rejectLog.created_at).getTime();
+
+    if (Number.isNaN(logDate) || Number.isNaN(rejectDate)) return false;
+    if (logDate <= rejectDate) return false;
+
+    if (currentRole === "chauffeur") {
+      return (
+        log.changed_role === "chauffeur" &&
+        log.old_status === "brouillon" &&
+        log.new_status === "saisi_chauffeur"
+      );
+    }
+
+    if (currentRole === "admin") {
+      return (
+        log.changed_role === "admin" &&
+        log.old_status === "saisi_chauffeur" &&
+        log.new_status === "valide_admin"
+      );
+    }
+
+    if (currentRole === "admin_societe") {
+      return (
+        log.changed_role === "admin_societe" &&
+        log.old_status === "valide_admin" &&
+        log.new_status === "en_attente_prefacturation"
+      );
+    }
+
+    return false;
+  });
+
+  if (hasCorrectionAfterReject) return null;
 
   return {
     title: `Journée refusée par ${getRoleLabel(rejectLog.changed_role)}`,
@@ -540,18 +551,7 @@ const workflowDisplay = buildWorkflowHeaderDisplay(
 );
 
 const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRole);
-  let statusBadge: WorkflowStatusBadge | null = null;
-
-  if (report?.workflow_status) {
-    const { data: badgeData } = await supabase
-      .from("report_workflow_statuses")
-      .select("code, label, badge_variant, badge_color")
-      .eq("code", report.workflow_status)
-      .maybeSingle<WorkflowStatusBadge>();
-
-    statusBadge = badgeData ?? null;
-  }
-
+  
   let allowedTransitions: string[] = [];
 
   if (report?.workflow_status && currentRole && !report.workflow_locked) {
@@ -577,11 +577,6 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
       allowedTransitions = transitionsData?.map((t) => t.to_status) ?? [];
     }
   }
-
-  const workflowLabel =
-    statusBadge?.label ?? formatWorkflowLabel(report?.workflow_status ?? null);
-
-  const workflowBadgeColor = statusBadge?.badge_color ?? "#6b7280";
 
   const isLocked = Boolean(report?.workflow_locked);
  
