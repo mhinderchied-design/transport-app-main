@@ -421,9 +421,7 @@ function buildRejectNotice(
 
   return !hasResetAfterThisReject;
 });
-  if (hasNewCycleAfterReject) {
-    return null;
-  }
+  if (!rejectLog) return null;
 
   return {
     title: `Journée refusée par ${getRoleLabel(rejectLog.changed_role)}`,
