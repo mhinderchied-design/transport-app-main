@@ -364,74 +364,45 @@ function buildRejectNotice(
     return null;
   }
 
-  const rejectLog = logs.find((log) => {
-    if (currentRole === "chauffeur") {
-      return (
-        log.new_status === "brouillon" &&
-        ["admin", "admin_societe", "super_super_admin"].includes(
-          log.changed_role ?? ""
-        )
-      );
-    }
+  const activeRejectConfig =
+    currentRole === "chauffeur"
+      ? {
+          currentStatus: "brouillon",
+          isRejectLog: (log: WorkflowLogRow) =>
+            log.new_status === "brouillon" &&
+            ["admin", "admin_societe", "super_super_admin"].includes(
+              log.changed_role ?? ""
+            ),
+        }
+      : currentRole === "admin"
+      ? {
+          currentStatus: "saisi_chauffeur",
+          isRejectLog: (log: WorkflowLogRow) =>
+            log.old_status === "valide_admin" &&
+            log.new_status === "saisi_chauffeur" &&
+            ["admin_societe", "super_super_admin"].includes(
+              log.changed_role ?? ""
+            ),
+        }
+      : currentRole === "admin_societe"
+      ? {
+          currentStatus: "valide_admin",
+          isRejectLog: (log: WorkflowLogRow) =>
+            log.old_status === "en_attente_prefacturation" &&
+            log.new_status === "valide_admin" &&
+            log.changed_role === "super_super_admin",
+        }
+      : null;
 
-    if (currentRole === "admin") {
-      return (
-        log.old_status === "valide_admin" &&
-        log.new_status === "saisi_chauffeur" &&
-        ["admin_societe", "super_super_admin"].includes(log.changed_role ?? "")
-      );
-    }
+  if (!activeRejectConfig) return null;
 
-    if (currentRole === "admin_societe") {
-      return (
-        log.old_status === "en_attente_prefacturation" &&
-        log.new_status === "valide_admin" &&
-        log.changed_role === "super_super_admin"
-      );
-    }
+  if (report.workflow_status !== activeRejectConfig.currentStatus) {
+    return null;
+  }
 
-    return false;
-  });
+  const rejectLog = logs.find(activeRejectConfig.isRejectLog);
 
   if (!rejectLog) return null;
-
-  const hasCorrectionAfterReject = logs.some((log) => {
-    if (!log.created_at || !rejectLog.created_at) return false;
-
-    const logDate = new Date(log.created_at).getTime();
-    const rejectDate = new Date(rejectLog.created_at).getTime();
-
-    if (Number.isNaN(logDate) || Number.isNaN(rejectDate)) return false;
-    if (logDate <= rejectDate) return false;
-
-    if (currentRole === "chauffeur") {
-      return (
-        log.changed_role === "chauffeur" &&
-        log.old_status === "brouillon" &&
-        log.new_status === "saisi_chauffeur"
-      );
-    }
-
-    if (currentRole === "admin") {
-      return (
-        log.changed_role === "admin" &&
-        log.old_status === "saisi_chauffeur" &&
-        log.new_status === "valide_admin"
-      );
-    }
-
-    if (currentRole === "admin_societe") {
-      return (
-        log.changed_role === "admin_societe" &&
-        log.old_status === "valide_admin" &&
-        log.new_status === "en_attente_prefacturation"
-      );
-    }
-
-    return false;
-  });
-
-  if (hasCorrectionAfterReject) return null;
 
   return {
     title: `Journée refusée par ${getRoleLabel(rejectLog.changed_role)}`,
