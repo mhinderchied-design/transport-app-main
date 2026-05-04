@@ -376,6 +376,21 @@ function buildRejectNotice(
     return null;
   }
 
+  if (currentRole === "admin" && report.workflow_status !== "saisi_chauffeur") {
+    return null;
+  }
+
+  if (
+    currentRole === "admin_societe" &&
+    report.workflow_status !== "valide_admin"
+  ) {
+    return null;
+  }
+
+  if (currentRole === "super_super_admin") {
+    return null;
+  }
+
   const rejectLog = logs.find((log) => {
     if (currentRole === "chauffeur") {
       return (
@@ -399,16 +414,6 @@ function buildRejectNotice(
         log.old_status === "en_attente_prefacturation" &&
         log.new_status === "valide_admin" &&
         log.changed_role === "super_super_admin"
-      );
-    }
-
-    if (currentRole === "super_super_admin") {
-      return (
-        log.new_status === "brouillon" ||
-        (log.old_status === "valide_admin" &&
-          log.new_status === "saisi_chauffeur") ||
-        (log.old_status === "en_attente_prefacturation" &&
-          log.new_status === "valide_admin")
       );
     }
 
