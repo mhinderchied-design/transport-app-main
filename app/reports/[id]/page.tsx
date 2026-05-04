@@ -342,21 +342,29 @@ function buildWorkflowHeaderDisplay(
     };
   }
 
-  if (currentRole === "super_super_admin") {
+ if (currentRole === "super_super_admin") {
+  if (
+    report.workflow_status === "valide_super_admin" ||
+    report.workflow_status === "verrouille"
+  ) {
     return {
-      main: "Vue super admin",
-      sub: report.workflow_status
-        ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
-        : "Statut inconnu",
+      main: "Validé",
+      sub: "Journée validée définitivement",
     };
   }
 
   return {
     main: "Brouillon",
-    sub: "En attente",
+    sub: report.workflow_status
+      ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
+      : "Statut inconnu",
   };
 }
-
+  return {
+  main: "Brouillon",
+  sub: "En attente",
+};
+}
 function buildRejectNotice(
   report: ReportRow | null,
   logs: WorkflowLogRow[],
@@ -659,15 +667,20 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
   </span>
 </p>
 
-<p>
-  <strong>Validation chauffeur :</strong>{" "}
-  {formatDate(report.valide_chauffeur_at)}
-</p>
 
-<p>
-  <strong>Validation chef d’équipe :</strong>{" "}
-  {formatDate(report.valide_admin_at)}
-</p>
+           {["admin_societe", "super_super_admin"].includes(currentRole ?? "") && (
+  <>
+    <p>
+      <strong>Validé par chauffeur :</strong>{" "}
+      {formatDate(report.valide_chauffeur_at)}
+    </p>
+
+    <p>
+      <strong>Validé par chef d’équipe :</strong>{" "}
+      {formatDate(report.valide_admin_at)}
+    </p>
+  </>
+)}
           </div>
         )}
       </section>
