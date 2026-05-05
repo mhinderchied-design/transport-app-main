@@ -55,11 +55,15 @@ function getTransitionLabel(
   }
 
   if (status === "valide_admin") {
+    if (currentStatus === "saisi_chauffeur") {
+      return "Valider la journée";
+    }
+
     return "Renvoyer à l’admin société";
   }
 
   if (status === "en_attente_prefacturation") {
-    return "Valider admin société";
+    return "Valider la journée";
   }
 
   if (status === "valide_super_admin") {
@@ -68,7 +72,6 @@ function getTransitionLabel(
 
   return formatWorkflowLabel(status);
 }
-
 export default function TransitionForm({
   reportId,
   currentStatus,
