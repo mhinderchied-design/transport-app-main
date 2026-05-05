@@ -63,28 +63,36 @@ type WorkflowLogRow = {
 function formatWorkflowLabel(status: string | null) {
   switch (status) {
     case "brouillon":
-      return "Brouillon";
+      return "En saisie chauffeur";
+
     case "saisi_chauffeur":
-      return "Saisi chauffeur";
-    case "en_controle_admin":
-      return "En contrôle admin";
-    case "rejete":
-      return "Rejeté";
+      return "En attente chef d’équipe";
+
     case "valide_admin":
-      return "Validé admin";
+      return "En attente admin société";
+
     case "en_attente_prefacturation":
-      return "En attente préfacturation";
+      return "En attente validation finale";
+
+    case "valide_super_admin":
+      return "Validé définitivement";
+
+    case "verrouille":
+      return "Rapport verrouillé";
+
     case "prefacture":
       return "Préfacturé";
-    case "valide_super_admin":
-      return "Validé super admin";
-    case "verrouille":
-      return "Verrouillé";
+
+    case "rejete":
+      return "À corriger";
+
+    case "en_controle_admin":
+      return "En contrôle chef d’équipe";
+
     default:
       return status ?? "Inconnu";
   }
 }
-
 function getStatusBadge(
   status: string | null,
   label: string,
@@ -388,8 +396,8 @@ function buildWorkflowHeaderDisplay(
     return {
       main: "Brouillon",
       sub: report.workflow_status
-        ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
-        : "Statut inconnu",
+  ? formatWorkflowLabel(report.workflow_status)
+  : "Statut inconnu",
       mainTone: "draft",
       subTone: "info",
     };
