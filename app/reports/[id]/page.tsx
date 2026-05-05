@@ -380,16 +380,15 @@ function buildRejectNotice(
           resetRoles: ["chauffeur"],
         }
       : currentRole === "admin"
-      ? {
-          currentStatus: "saisi_chauffeur",
-          isRejectLog: (log: WorkflowLogRow) =>
-            log.old_status === "valide_admin" &&
-            log.new_status === "saisi_chauffeur" &&
-            ["admin_societe", "super_super_admin"].includes(
-              log.changed_role ?? ""
-            ),
-          resetRoles: ["admin", "chauffeur"],
-        }
+? {
+    currentStatus: "saisi_chauffeur",
+    isRejectLog: (log: WorkflowLogRow) =>
+      log.new_status === "saisi_chauffeur" &&
+      ["admin_societe", "super_super_admin"].includes(
+        log.changed_role ?? ""
+      ),
+    resetRoles: ["admin", "chauffeur"],
+  }
      : currentRole === "admin_societe"
 ? {
     currentStatus: "valide_admin",
