@@ -433,53 +433,102 @@ function buildRejectNotice(
     createdAt: rejectLog.created_at,
   };
 }
-function buildSubstitutionNotices(logs: WorkflowLogRow[]): SubstitutionNotice[] {
+function buildSubstitutionNotices(
+  report: ReportRow | null,
+  logs: WorkflowLogRow[]
+): SubstitutionNotice[] {
+  if (!report?.workflow_status) return [];
+
   const notices: SubstitutionNotice[] = [];
 
-  const latestToStatus = (status: string) =>
-    logs.find((log) => log.new_status === status);
+  const statusRank: Record<string, number> = {
+    brouillon: 0,
+    saisi_chauffeur: 1,
+    valide_admin: 2,
+    en_attente_prefacturation: 3,
+    valide_super_admin: 4,
+    verrouille: 5,
+  };
 
-  const chauffeurValidation = latestToStatus("saisi_chauffeur");
-  const adminValidation = latestToStatus("valide_admin");
-  const adminSocieteValidation = latestToStatus("en_attente_prefacturation");
+  const currentRank = statusRank[report.workflow_status] ?? 0;
 
-  if (
-    chauffeurValidation &&
-    chauffeurValidation.changed_role &&
-    chauffeurValidation.changed_role !== "chauffeur"
-  ) {
-    notices.push({
-      id: `chauffeur-${chauffeurValidation.id}`,
-      text: `Journée chauffeur validée par ${getRoleLabel(
-        chauffeurValidation.changed_role
-      )}.`,
+  const findActiveValidation = (
+    targetStatus: string,
+    resetStatuses: string[]
+  ) => {
+    const validationLog = logs.find((log) => log.new_status === targetStatus);
+
+    if (!validationLog?.created_at) return null;
+
+    const validationTime = new Date(validationLog.created_at).getTime();
+    if (Number.isNaN(validationTime)) return null;
+
+    const hasResetAfter = logs.some((log) => {
+      if (!log.created_at) return false;
+
+      const logTime = new Date(log.created_at).getTime();
+      if (Number.isNaN(logTime)) return false;
+
+      return logTime > validationTime && resetStatuses.includes(log.new_status ?? "");
     });
+
+    return hasResetAfter ? null : validationLog;
+  };
+
+  if (currentRank >= 1) {
+    const chauffeurValidation = findActiveValidation("saisi_chauffeur", [
+      "brouillon",
+    ]);
+
+    if (
+      chauffeurValidation?.changed_role &&
+      chauffeurValidation.changed_role !== "chauffeur"
+    ) {
+      notices.push({
+        id: `chauffeur-${chauffeurValidation.id}`,
+        text: `Journée chauffeur validée par ${getRoleLabel(
+          chauffeurValidation.changed_role
+        )}.`,
+      });
+    }
   }
 
-  if (
-    adminValidation &&
-    adminValidation.changed_role &&
-    adminValidation.changed_role !== "admin"
-  ) {
-    notices.push({
-      id: `admin-${adminValidation.id}`,
-      text: `Étape chef d’équipe validée par ${getRoleLabel(
-        adminValidation.changed_role
-      )}.`,
-    });
+  if (currentRank >= 2) {
+    const adminValidation = findActiveValidation("valide_admin", [
+      "brouillon",
+      "saisi_chauffeur",
+    ]);
+
+    if (
+      adminValidation?.changed_role &&
+      adminValidation.changed_role !== "admin"
+    ) {
+      notices.push({
+        id: `admin-${adminValidation.id}`,
+        text: `Étape chef d’équipe validée par ${getRoleLabel(
+          adminValidation.changed_role
+        )}.`,
+      });
+    }
   }
 
-  if (
-    adminSocieteValidation &&
-    adminSocieteValidation.changed_role &&
-    adminSocieteValidation.changed_role !== "admin_societe"
-  ) {
-    notices.push({
-      id: `admin-societe-${adminSocieteValidation.id}`,
-      text: `Étape société validée par ${getRoleLabel(
-        adminSocieteValidation.changed_role
-      )}.`,
-    });
+  if (currentRank >= 3) {
+    const adminSocieteValidation = findActiveValidation(
+      "en_attente_prefacturation",
+      ["brouillon", "saisi_chauffeur", "valide_admin"]
+    );
+
+    if (
+      adminSocieteValidation?.changed_role &&
+      adminSocieteValidation.changed_role !== "admin_societe"
+    ) {
+      notices.push({
+        id: `admin-societe-${adminSocieteValidation.id}`,
+        text: `Étape société validée par ${getRoleLabel(
+          adminSocieteValidation.changed_role
+        )}.`,
+      });
+    }
   }
 
   return notices;
