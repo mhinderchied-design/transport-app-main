@@ -386,15 +386,15 @@ function buildRejectNotice(
             ),
           resetRoles: ["admin", "chauffeur"],
         }
-      : currentRole === "admin_societe"
-      ? {
-          currentStatus: "valide_admin",
-          isRejectLog: (log: WorkflowLogRow) =>
-            log.old_status === "en_attente_prefacturation" &&
-            log.new_status === "valide_admin" &&
-            log.changed_role === "super_super_admin",
-          resetRoles: ["admin_societe", "admin", "chauffeur"],
-        }
+     : currentRole === "admin_societe"
+? {
+    currentStatus: "valide_admin",
+    isRejectLog: (log: WorkflowLogRow) =>
+      log.changed_role === "super_super_admin" &&
+      log.old_status === "en_attente_prefacturation" &&
+      log.new_status === "valide_admin",
+    resetRoles: ["admin_societe"],
+  }
       : null;
 
   if (!config) return null;
