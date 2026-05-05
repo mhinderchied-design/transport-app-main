@@ -207,6 +207,10 @@ type RejectNotice = {
   comment: string | null;
   createdAt: string | null;
 };
+type SubstitutionNotice = {
+  id: string;
+  text: string;
+};
 
 function buildWorkflowHeaderDisplay(
   report: ReportRow | null,
@@ -429,6 +433,57 @@ function buildRejectNotice(
     createdAt: rejectLog.created_at,
   };
 }
+function buildSubstitutionNotices(logs: WorkflowLogRow[]): SubstitutionNotice[] {
+  const notices: SubstitutionNotice[] = [];
+
+  const latestToStatus = (status: string) =>
+    logs.find((log) => log.new_status === status);
+
+  const chauffeurValidation = latestToStatus("saisi_chauffeur");
+  const adminValidation = latestToStatus("valide_admin");
+  const adminSocieteValidation = latestToStatus("en_attente_prefacturation");
+
+  if (
+    chauffeurValidation &&
+    chauffeurValidation.changed_role &&
+    chauffeurValidation.changed_role !== "chauffeur"
+  ) {
+    notices.push({
+      id: `chauffeur-${chauffeurValidation.id}`,
+      text: `Journée chauffeur validée par ${getRoleLabel(
+        chauffeurValidation.changed_role
+      )}.`,
+    });
+  }
+
+  if (
+    adminValidation &&
+    adminValidation.changed_role &&
+    adminValidation.changed_role !== "admin"
+  ) {
+    notices.push({
+      id: `admin-${adminValidation.id}`,
+      text: `Étape chef d’équipe validée par ${getRoleLabel(
+        adminValidation.changed_role
+      )}.`,
+    });
+  }
+
+  if (
+    adminSocieteValidation &&
+    adminSocieteValidation.changed_role &&
+    adminSocieteValidation.changed_role !== "admin_societe"
+  ) {
+    notices.push({
+      id: `admin-societe-${adminSocieteValidation.id}`,
+      text: `Étape société validée par ${getRoleLabel(
+        adminSocieteValidation.changed_role
+      )}.`,
+    });
+  }
+
+  return notices;
+}
 
 const initialTransitionState: ReportTransitionState = {
   transition_ok: false,
@@ -541,6 +596,7 @@ const workflowDisplay = buildWorkflowHeaderDisplay(
 );
 
 const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRole);
+  const substitutionNotices = buildSubstitutionNotices(formattedWorkflowLogs);
   
   let allowedTransitions: string[] = [];
 
@@ -673,6 +729,18 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
 )}
           </div>
         )}
+        {substitutionNotices.length > 0 && (
+  <div className="mt-4 space-y-2">
+    {substitutionNotices.map((notice) => (
+      <div
+        key={notice.id}
+        className="rounded-md border border-yellow-400/50 bg-yellow-950/30 p-3 text-sm text-yellow-100"
+      >
+        ⚠️ {notice.text}
+      </div>
+    ))}
+  </div>
+)}
       </section>
      {rejectNotice && (
   <section className="mb-6 rounded-lg border border-red-400 bg-red-950/30 p-4 text-red-100">
