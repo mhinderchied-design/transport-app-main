@@ -46,6 +46,78 @@ function getTransitionLabel(
   currentStatus: string | null,
   currentRole: string | null
 ) {
+  if (currentStatus === "brouillon") {
+    if (status === "saisi_chauffeur") {
+      return "Valider la journée chauffeur";
+    }
+
+    if (status === "valide_admin") {
+      return "Valider chauffeur + admin";
+    }
+
+    if (status === "en_attente_prefacturation") {
+      return "Valider chauffeur + admin + admin société";
+    }
+
+    if (status === "valide_super_admin") {
+      return "Valider définitivement";
+    }
+  }
+
+  if (currentStatus === "saisi_chauffeur") {
+    if (status === "brouillon") {
+      return "Renvoyer au chauffeur";
+    }
+
+    if (status === "valide_admin") {
+      return "Valider la journée";
+    }
+
+    if (status === "en_attente_prefacturation") {
+      return "Valider admin + admin société";
+    }
+
+    if (status === "valide_super_admin") {
+      return "Valider définitivement";
+    }
+  }
+
+  if (currentStatus === "valide_admin") {
+    if (status === "brouillon") {
+      return "Renvoyer au chauffeur";
+    }
+
+    if (status === "saisi_chauffeur") {
+      return "Renvoyer à l’admin";
+    }
+
+    if (status === "en_attente_prefacturation") {
+      return "Valider la journée";
+    }
+
+    if (status === "valide_super_admin") {
+      return "Valider définitivement";
+    }
+  }
+
+  if (currentStatus === "en_attente_prefacturation") {
+    if (status === "brouillon") {
+      return "Renvoyer au chauffeur";
+    }
+
+    if (status === "saisi_chauffeur") {
+      return "Renvoyer à l’admin";
+    }
+
+    if (status === "valide_admin") {
+      return "Renvoyer à l’admin société";
+    }
+
+    if (status === "valide_super_admin") {
+      return "Valider définitivement";
+    }
+  }
+
   if (status === "brouillon") {
     return "Renvoyer au chauffeur";
   }
@@ -55,10 +127,6 @@ function getTransitionLabel(
   }
 
   if (status === "valide_admin") {
-    if (currentStatus === "saisi_chauffeur") {
-      return "Valider la journée";
-    }
-
     return "Renvoyer à l’admin société";
   }
 
