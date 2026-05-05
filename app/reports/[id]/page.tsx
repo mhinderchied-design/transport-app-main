@@ -172,6 +172,17 @@ function getTimelineDotClass(status: string | null) {
 
   return map[status ?? ""] ?? "bg-white ring-white/20";
 }
+function getWorkflowToneClass(tone: WorkflowTone) {
+  const map: Record<WorkflowTone, string> = {
+    draft: "border-gray-500/40 bg-gray-500/15 text-gray-200",
+    valid: "border-green-500/50 bg-green-500/15 text-green-200",
+    warning: "border-yellow-500/50 bg-yellow-500/15 text-yellow-200",
+    danger: "border-red-500/50 bg-red-500/15 text-red-200",
+    info: "border-blue-500/50 bg-blue-500/15 text-blue-200",
+  };
+
+  return map[tone];
+}
 function formatDate(value: string | null) {
   if (!value) return "—";
 
@@ -197,9 +208,13 @@ function getRoleLabel(role: string | null) {
   }
 }
 
+type WorkflowTone = "draft" | "valid" | "warning" | "danger" | "info";
+
 type WorkflowHeaderDisplay = {
   main: string;
   sub: string;
+  mainTone: WorkflowTone;
+  subTone: WorkflowTone;
 };
 
 type RejectNotice = {
@@ -221,6 +236,8 @@ function buildWorkflowHeaderDisplay(
     return {
       main: "Brouillon",
       sub: "Aucun rapport chargé",
+      mainTone: "draft",
+      subTone: "warning",
     };
   }
 
@@ -234,7 +251,6 @@ function buildWorkflowHeaderDisplay(
 
   const hasAdminReject = logs.some(
     (log) =>
-      log.old_status === "valide_admin" &&
       log.new_status === "saisi_chauffeur" &&
       ["admin_societe", "super_super_admin"].includes(log.changed_role ?? "")
   );
@@ -251,6 +267,8 @@ function buildWorkflowHeaderDisplay(
       return {
         main: "Brouillon",
         sub: hasChauffeurReject ? "Journée à corriger" : "En attente de saisie",
+        mainTone: "draft",
+        subTone: hasChauffeurReject ? "danger" : "warning",
       };
     }
 
@@ -258,22 +276,28 @@ function buildWorkflowHeaderDisplay(
       return {
         main: "Validé",
         sub: "En attente de validation du chef d’équipe",
+        mainTone: "valid",
+        subTone: "warning",
       };
     }
 
     return {
       main: "Validé",
       sub: "Validé par le chef d’équipe",
+      mainTone: "valid",
+      subTone: "valid",
     };
   }
 
   if (currentRole === "admin") {
     if (report.workflow_status === "saisi_chauffeur") {
       return {
-        main: hasAdminReject ? "Brouillon" : "Brouillon",
+        main: "Brouillon",
         sub: hasAdminReject
           ? "Journée à corriger"
           : "En attente de validation chef d’équipe",
+        mainTone: "draft",
+        subTone: hasAdminReject ? "danger" : "warning",
       };
     }
 
@@ -281,6 +305,8 @@ function buildWorkflowHeaderDisplay(
       return {
         main: "Validé",
         sub: "En attente de validation société",
+        mainTone: "valid",
+        subTone: "warning",
       };
     }
 
@@ -292,22 +318,28 @@ function buildWorkflowHeaderDisplay(
       return {
         main: "Validé",
         sub: "Validé par Elias",
+        mainTone: "valid",
+        subTone: "valid",
       };
     }
 
     return {
       main: "Brouillon",
       sub: "En attente",
+      mainTone: "draft",
+      subTone: "warning",
     };
   }
 
   if (currentRole === "admin_societe") {
     if (report.workflow_status === "valide_admin") {
       return {
-        main: hasAdminSocieteReject ? "Brouillon" : "Brouillon",
+        main: "Brouillon",
         sub: hasAdminSocieteReject
           ? "Journée à corriger"
           : "En attente de validation société",
+        mainTone: "draft",
+        subTone: hasAdminSocieteReject ? "danger" : "warning",
       };
     }
 
@@ -315,6 +347,8 @@ function buildWorkflowHeaderDisplay(
       return {
         main: "Validé",
         sub: "En attente de validation finale",
+        mainTone: "valid",
+        subTone: "warning",
       };
     }
 
@@ -325,37 +359,48 @@ function buildWorkflowHeaderDisplay(
       return {
         main: "Validé",
         sub: "Validé par Mickael",
+        mainTone: "valid",
+        subTone: "valid",
       };
     }
 
     return {
       main: "Brouillon",
       sub: "En attente",
+      mainTone: "draft",
+      subTone: "warning",
     };
   }
 
- if (currentRole === "super_super_admin") {
-  if (
-    report.workflow_status === "valide_super_admin" ||
-    report.workflow_status === "verrouille"
-  ) {
+  if (currentRole === "super_super_admin") {
+    if (
+      report.workflow_status === "valide_super_admin" ||
+      report.workflow_status === "verrouille"
+    ) {
+      return {
+        main: "Validé",
+        sub: "Journée validée définitivement",
+        mainTone: "valid",
+        subTone: "valid",
+      };
+    }
+
     return {
-      main: "Validé",
-      sub: "Journée validée définitivement",
+      main: "Brouillon",
+      sub: report.workflow_status
+        ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
+        : "Statut inconnu",
+      mainTone: "draft",
+      subTone: "info",
     };
   }
 
   return {
     main: "Brouillon",
-    sub: report.workflow_status
-      ? `Statut actuel : ${formatWorkflowLabel(report.workflow_status)}`
-      : "Statut inconnu",
+    sub: "En attente",
+    mainTone: "draft",
+    subTone: "warning",
   };
-}
-  return {
-  main: "Brouillon",
-  sub: "En attente",
-};
 }
 function buildRejectNotice(
   report: ReportRow | null,
@@ -725,13 +770,9 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
 <p>
   <strong>Statut :</strong>{" "}
   <span
-    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-      workflowDisplay.main.includes("Brouillon")
-        ? "border-gray-500/40 bg-gray-500/15 text-gray-200"
-        : workflowDisplay.main.includes("Validé")
-        ? "border-green-500/50 bg-green-500/15 text-green-200"
-        : "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
-    }`}
+    className={`rounded-full border px-3 py-1 text-xs font-semibold ${getWorkflowToneClass(
+  workflowDisplay.mainTone
+)}`}
   >
     {workflowDisplay.main}
   </span>
@@ -740,16 +781,9 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
 <p>
   <strong>Suivi :</strong>{" "}
   <span
-    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-      workflowDisplay.sub.includes("corriger") ||
-      workflowDisplay.sub.includes("Refus")
-        ? "border-red-500/50 bg-red-500/15 text-red-200"
-        : workflowDisplay.sub.includes("attente")
-        ? "border-yellow-500/50 bg-yellow-500/15 text-yellow-200"
-        : workflowDisplay.sub.includes("Validé")
-        ? "border-green-500/50 bg-green-500/15 text-green-200"
-        : "border-blue-500/50 bg-blue-500/15 text-blue-200"
-    }`}
+    className={`rounded-full border px-3 py-1 text-xs font-semibold ${getWorkflowToneClass(
+  workflowDisplay.subTone
+)}`}
   >
     {workflowDisplay.sub}
   </span>
