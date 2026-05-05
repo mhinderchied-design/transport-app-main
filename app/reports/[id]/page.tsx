@@ -441,7 +441,7 @@ function buildSubstitutionNotices(
 
   const notices: SubstitutionNotice[] = [];
 
-  const statusRank: Record<string, number> = {
+  const rank: Record<string, number> = {
     brouillon: 0,
     saisi_chauffeur: 1,
     valide_admin: 2,
@@ -450,13 +450,23 @@ function buildSubstitutionNotices(
     verrouille: 5,
   };
 
-  const currentRank = statusRank[report.workflow_status] ?? 0;
+  const currentRank = rank[report.workflow_status] ?? 0;
 
-  const findActiveValidation = (
-    targetStatus: string,
-    resetStatuses: string[]
+  const findActiveSubstitution = (
+    targetRank: number,
+    expectedRole: string
   ) => {
-    const validationLog = logs.find((log) => log.new_status === targetStatus);
+    const validationLog = logs.find((log) => {
+      const oldRank = rank[log.old_status ?? ""] ?? -1;
+      const newRank = rank[log.new_status ?? ""] ?? -1;
+
+      return (
+        oldRank < targetRank &&
+        newRank >= targetRank &&
+        log.changed_role &&
+        log.changed_role !== expectedRole
+      );
+    });
 
     if (!validationLog?.created_at) return null;
 
@@ -468,65 +478,46 @@ function buildSubstitutionNotices(
 
       const logTime = new Date(log.created_at).getTime();
       if (Number.isNaN(logTime)) return false;
+      if (logTime <= validationTime) return false;
 
-      return logTime > validationTime && resetStatuses.includes(log.new_status ?? "");
+      const oldRank = rank[log.old_status ?? ""] ?? -1;
+      const newRank = rank[log.new_status ?? ""] ?? -1;
+
+      return oldRank > newRank && newRank <= targetRank;
     });
 
     return hasResetAfter ? null : validationLog;
   };
 
   if (currentRank >= 1) {
-    const chauffeurValidation = findActiveValidation("saisi_chauffeur", [
-      "brouillon",
-    ]);
+    const log = findActiveSubstitution(1, "chauffeur");
 
-    if (
-      chauffeurValidation?.changed_role &&
-      chauffeurValidation.changed_role !== "chauffeur"
-    ) {
+    if (log?.changed_role) {
       notices.push({
-        id: `chauffeur-${chauffeurValidation.id}`,
-        text: `Journée chauffeur validée par ${getRoleLabel(
-          chauffeurValidation.changed_role
-        )}.`,
+        id: `chauffeur-${log.id}`,
+        text: `Journée chauffeur validée par ${getRoleLabel(log.changed_role)}.`,
       });
     }
   }
 
   if (currentRank >= 2) {
-    const adminValidation = findActiveValidation("valide_admin", [
-      "brouillon",
-      "saisi_chauffeur",
-    ]);
+    const log = findActiveSubstitution(2, "admin");
 
-    if (
-      adminValidation?.changed_role &&
-      adminValidation.changed_role !== "admin"
-    ) {
+    if (log?.changed_role) {
       notices.push({
-        id: `admin-${adminValidation.id}`,
-        text: `Étape chef d’équipe validée par ${getRoleLabel(
-          adminValidation.changed_role
-        )}.`,
+        id: `admin-${log.id}`,
+        text: `Étape chef d’équipe validée par ${getRoleLabel(log.changed_role)}.`,
       });
     }
   }
 
   if (currentRank >= 3) {
-    const adminSocieteValidation = findActiveValidation(
-      "en_attente_prefacturation",
-      ["brouillon", "saisi_chauffeur", "valide_admin"]
-    );
+    const log = findActiveSubstitution(3, "admin_societe");
 
-    if (
-      adminSocieteValidation?.changed_role &&
-      adminSocieteValidation.changed_role !== "admin_societe"
-    ) {
+    if (log?.changed_role) {
       notices.push({
-        id: `admin-societe-${adminSocieteValidation.id}`,
-        text: `Étape société validée par ${getRoleLabel(
-          adminSocieteValidation.changed_role
-        )}.`,
+        id: `admin-societe-${log.id}`,
+        text: `Étape société validée par ${getRoleLabel(log.changed_role)}.`,
       });
     }
   }
