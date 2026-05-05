@@ -645,7 +645,10 @@ const workflowDisplay = buildWorkflowHeaderDisplay(
 );
 
 const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRole);
-  const substitutionNotices = buildSubstitutionNotices(formattedWorkflowLogs);
+  const substitutionNotices = buildSubstitutionNotices(
+  report,
+  formattedWorkflowLogs
+);
   
   let allowedTransitions: string[] = [];
 
