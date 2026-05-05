@@ -505,7 +505,7 @@ function buildSubstitutionNotices(
     if (log?.changed_role) {
       notices.push({
         id: `admin-${log.id}`,
-        text: `Étape chef d’équipe validée par ${getRoleLabel(log.changed_role)}.`,
+        text: `Journée chef d’équipe validée par ${getRoleLabel(log.changed_role)}.`,
       });
     }
   }
@@ -516,7 +516,7 @@ function buildSubstitutionNotices(
     if (log?.changed_role) {
       notices.push({
         id: `admin-societe-${log.id}`,
-        text: `Étape société validée par ${getRoleLabel(log.changed_role)}.`,
+        text: `Journée admin société validée par ${getRoleLabel(log.changed_role)}.`,
       });
     }
   }
@@ -771,18 +771,35 @@ const rejectNotice = buildRejectNotice(report, formattedWorkflowLogs, currentRol
 )}
           </div>
         )}
-        {substitutionNotices.length > 0 && (
-  <div className="mt-4 space-y-2">
-    {substitutionNotices.map((notice) => (
-      <div
-        key={notice.id}
-        className="rounded-md border border-yellow-400/50 bg-yellow-950/30 p-3 text-sm text-yellow-100"
-      >
-        ⚠️ {notice.text}
-      </div>
-    ))}
-  </div>
-)}
+        {(() => {
+  const visibleSubstitutionNotices = substitutionNotices.filter((notice) => {
+    if (currentRole === "chauffeur") {
+      return notice.id.startsWith("chauffeur-");
+    }
+
+    if (currentRole === "admin") {
+      return (
+        notice.id.startsWith("chauffeur-") ||
+        notice.id.startsWith("admin-")
+      );
+    }
+
+    return true;
+  });
+
+  return visibleSubstitutionNotices.length > 0 ? (
+    <div className="mt-4 space-y-2">
+      {visibleSubstitutionNotices.map((notice) => (
+        <div
+          key={notice.id}
+          className="rounded-md border border-yellow-400/50 bg-yellow-950/30 p-3 text-sm text-yellow-100"
+        >
+          ⚠️ {notice.text}
+        </div>
+      ))}
+    </div>
+  ) : null;
+})()}
       </section>
      {rejectNotice && (
   <section className="mb-6 rounded-lg border border-red-400 bg-red-950/30 p-4 text-red-100">
