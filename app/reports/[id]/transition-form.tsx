@@ -41,6 +41,34 @@ function formatWorkflowLabel(status: string | null) {
   }
 }
 
+function getTransitionLabel(
+  status: string,
+  currentStatus: string | null,
+  currentRole: string | null
+) {
+  if (status === "brouillon") {
+    return "Renvoyer au chauffeur";
+  }
+
+  if (status === "saisi_chauffeur") {
+    return "Renvoyer à l’admin";
+  }
+
+  if (status === "valide_admin") {
+    return "Renvoyer à l’admin société";
+  }
+
+  if (status === "en_attente_prefacturation") {
+    return "Valider admin société";
+  }
+
+  if (status === "valide_super_admin") {
+    return "Valider définitivement";
+  }
+
+  return formatWorkflowLabel(status);
+}
+
 export default function TransitionForm({
   reportId,
   currentStatus,
@@ -91,47 +119,11 @@ export default function TransitionForm({
           required
         >
           <option value="">Choisir un statut</option>
-          {allowedTransitions.map((status) => {
-  let optionLabel = formatWorkflowLabel(status);
-
-  if (
-    currentStatus === "saisi_chauffeur" &&
-    status === "brouillon" &&
-    ["admin", "admin_societe", "super_super_admin"].includes(currentRole ?? "")
-  ) {
-    optionLabel = "Rejeter et renvoyer au chauffeur";
-  }
-
-  if (
-    currentStatus === "valide_admin" &&
-    status === "saisi_chauffeur" &&
-    ["admin_societe", "super_super_admin"].includes(currentRole ?? "")
-  ) {
-    optionLabel = "Rejeter et renvoyer à l’admin";
-  }
-
- if (
-  currentStatus === "en_attente_prefacturation" &&
-  status === "valide_admin" &&
-  currentRole === "super_super_admin"
-) {
-  optionLabel = "Rejeter et renvoyer à Elias";
-}
-
-if (
-  currentStatus === "valide_super_admin" &&
-  status === "valide_admin" &&
-  currentRole === "super_super_admin"
-) {
-  optionLabel = "Rejeter et renvoyer à Elias";
-}
-
-  return (
-    <option key={status} value={status}>
-      {optionLabel}
-    </option>
-  );
-})}
+         {allowedTransitions.map((status) => (
+  <option key={status} value={status}>
+    {getTransitionLabel(status, currentStatus, currentRole)}
+  </option>
+))}
         </select>
       </div>
 
