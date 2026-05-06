@@ -214,22 +214,17 @@ export default function TransitionForm({
         Exécuter la transition
       </button>
 
-      <div className="mt-4 text-sm opacity-80">
-        <p>Résultat : {state.transition_message}</p>
-        <p>transition_ok : {String(state.transition_ok)}</p>
-        <p>
-          old_status :{" "}
-          {state.old_status
-            ? `${formatWorkflowLabel(state.old_status)} (${state.old_status})`
-            : "null"}
-        </p>
-        <p>
-          new_status :{" "}
-          {state.new_status
-            ? `${formatWorkflowLabel(state.new_status)} (${state.new_status})`
-            : "null"}
-        </p>
-      </div>
+      {state.transition_message && (
+  <div
+    className={`mt-4 rounded-md border p-3 text-sm ${
+      state.transition_ok
+        ? "border-green-500/40 bg-green-950/30 text-green-100"
+        : "border-red-500/40 bg-red-950/30 text-red-100"
+    }`}
+  >
+    {state.transition_message}
+  </div>
+)}
     </form>
   );
 }
