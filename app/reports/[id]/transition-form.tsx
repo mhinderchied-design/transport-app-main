@@ -189,7 +189,7 @@ export default function TransitionForm({
           className="w-full rounded border border-white/20 bg-black/30 p-2"
           required
         >
-          <option value="">Choisir un statut</option>
+          <option value="">Choisir une action</option>
          {allowedTransitions.map((status) => (
   <option key={status} value={status}>
     {getTransitionLabel(status, currentStatus, currentRole)}
