@@ -168,7 +168,7 @@ export default function TransitionForm({
 
       <div>
         <p className="text-sm opacity-70">
-          Statut actuel :{" "}
+          Situation actuelle :{" "}
           <strong>{formatWorkflowLabel(currentStatus)}</strong>
         </p>
         <p className="text-sm opacity-70">
@@ -183,7 +183,7 @@ export default function TransitionForm({
       )}
 
       <div>
-        <label className="mb-1 block text-sm">Statut cible</label>
+        <label className="mb-1 block text-sm">Action à effectuer</label>
         <select
           name="to_status"
           className="w-full rounded border border-white/20 bg-black/30 p-2"
@@ -211,7 +211,7 @@ export default function TransitionForm({
         type="submit"
         className="rounded bg-white/10 px-4 py-2 hover:bg-white/20"
       >
-        Exécuter la transition
+       Valider l’action
       </button>
 
       {state.transition_message && (
